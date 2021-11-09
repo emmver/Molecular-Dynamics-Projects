@@ -62,6 +62,7 @@ for nca in [10]:#[10,30,50,70,90,100,110,130,150,170,190]:
 			else:
 				chck.append([i,j,k])
 			if ch>=nc:
+				print("BREAK!")
 				break
 			R = np.array([-L/2.0 + la/2.0 + i*la,-L/2.0 + la/2.0 + j*la, -L/2.0 + la/2.0 + k*la	])				
 			M = special_ortho_group.rvs(3) #random rotational matrix
@@ -85,7 +86,7 @@ for nca in [10]:#[10,30,50,70,90,100,110,130,150,170,190]:
 				else:
 					angles.append([pid, 1, pid-2,pid-1,pid])
 
-			ch+=1
+			ch+=1 ; print ("Ch is:",ch)
 
 		with open(outpath+'head','w') as of:
 			of.write('LAMMPS\n')
