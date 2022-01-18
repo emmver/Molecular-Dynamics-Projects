@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt #Plotting library
 from numba import njit
 from tqdm import tqdm
 import ctypes
-
+import os
 ######### Calculate Gyration Tensor #######################3
 @njit(fastmath=True)
 def rg_tens (r):
@@ -355,17 +355,19 @@ def normsk_rand(inputx, inputy):
         return _out[:(k-1),:]
 
 
-def norm_sk(totrep,Sskarr,mybox, Sskbb, knorm,nkbins,mygen,Lbackbone):
+def norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,nparticles,tostore):
     for i in tqdm(range(nkbins),desc='Norm Full Sk'):
         Ssktrans[i] = (1./(1.*totrep)) * Sskarr[i] / float(nparticles)**2
     toprint = normsk_rand(knorm, Ssktrans)
-    filename=_tostore+"/G{}{}".format(mygen,Lbackbone)
+    filename=tostore+"/G{}{}".format(mygen,Lbackbone)
     print("To Store:",filename)
     np.savetxt(filename, toprint, fmt = '%.8e')
     for i in tqdm(range(nkbins),desc='Norm Backbone Sk'):
         Ssktrans[i] = (1./(1.*totrep)) * Sskbb[i] / float(Lbackbone)**2
     toprint = normsk_rand(knorm, Ssktrans)
-    filename=_tostore+"/G{}{}_bb".format(mygen,Lbackbone)
+    filename=os.path.abspath(tostore+"/G{}{}_bb".format(mygen,Lbackbone))
     print("To Store:",filename)
+    np.savetxt(filename, toprint, fmt = '%.8e')
+
 
 
