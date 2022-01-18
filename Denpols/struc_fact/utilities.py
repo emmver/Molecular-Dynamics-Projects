@@ -53,25 +53,6 @@ def print_lorenzo(myinput, thisl, myname):
     f.close()
 
 
-def random_on_sphere():
-
-    ransq = 100
-
-    while ransq >= 1.0:
-        ran_1 = 1.0 - 2.0 * np.random.rand()
-        ran_2 = 1.0 - 2.0 * np.random.rand()
-        ransq = np.power(ran_1, 2) + np.power(ran_2, 2)
-
-    ranh = 2.0 * np.sqrt(1.0 - ransq)
-
-    res = np.empty((3), dtype=float)
-
-    res[0] = ran_1 * ranh
-    res[1] = ran_2 * ranh
-    res[2] = 1.0 - 2.0 * ransq
-
-    return res
-
 
 def CdL(_input, elle):  ##mindist
 
@@ -376,4 +357,6 @@ def print_data(_input, _params, _type):
         np.savetxt(filename, toprint, fmt = '%.8e')
 
     return toprint
+
+
 
