@@ -1,8 +1,12 @@
+import numpy as np 
+import matplotlib.pyplot as plt #Plotting library
+from numba import njit
+from tqdm import tqdm
+import ctypes
 
 ######### Calculate Gyration Tensor #######################3
 @njit(fastmath=True)
 def rg_tens (r):
-    
     N = r.shape[0]
     r2=np.zeros((3,3))
     for i in range (N):
@@ -304,20 +308,17 @@ def Ree_correlation(_input):
 
 def avg_bending_angle(bonds, blength, out):
 
-    _N = bonds.shape[0];print(_N)
+    _N = bonds.shape[0]
     M = out.size; dth = 2./M    
 
     for i in range(_N-1):
-        temp = np.sum(bonds[i+1]*bonds[i])/np.sqrt(blength[i+1]*blength[i]) ##np.cumsum(blength[i:])
-        print((temp+1.)/dth)
-        print(np.floor((temp+1.)/dth)-1)
+        temp = np.sum(bonds[i+1]*bonds[i])/np.sqrt(blength[i+1]*blength[i]) 
         binn = int(np.floor((temp+1.)/dth)-0.001)
         out[binn] += 1.
 
 
-def analyze_sk(data):
-
-  
+def analyze_sk(data,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone):
+    nparticles=data.particles.positions[:][:,0].size
     unwrap = data.particles.positions[:] 
     CoM = center_of_mass(unwrap, mybox, 'nopbc')
     unwrap2 = np.copy(unwrap); unwrap2[:] -= CoM
@@ -325,9 +326,11 @@ def analyze_sk(data):
     types=data.particles.particle_types[:]
     temp=unwrap[np.where(types==0)]
     backbone=temp
-    sk.calc_sk (ctypes.c_void_p(kgrid.ctypes.data), ctypes.c_void_p(backbone.ctypes.data), ctypes.c_void_p(Sskbb.ctypes.data), ctypes.c_int(Lbackbone), ctypes.c_int(nkbins))
+    _sk.calc_sk (ctypes.c_void_p(kgrid.ctypes.data), ctypes.c_void_p(backbone.ctypes.data), ctypes.c_void_p(Sskbb.ctypes.data), ctypes.c_int(Lbackbone), ctypes.c_int(nkbins))
     bonds = backbone[1:] - backbone[:-1]
-    blength = np.sum(bonds[:]**2, axis=1)    
+    blength = np.sum(bonds[:]**2, axis=1)   
+    Nth= 100
+    btheta = np.zeros((Nth)) 
     avg_bending_angle(bonds, blength, btheta)
 
 
@@ -352,7 +355,7 @@ def normsk_rand(inputx, inputy):
         return _out[:(k-1),:]
 
 
-def norm_sk(totrep):
+def norm_sk(totrep,Sskarr,mybox, Sskbb, knorm,nkbins,mygen,Lbackbone):
     for i in tqdm(range(nkbins),desc='Norm Full Sk'):
         Ssktrans[i] = (1./(1.*totrep)) * Sskarr[i] / float(nparticles)**2
     toprint = normsk_rand(knorm, Ssktrans)
