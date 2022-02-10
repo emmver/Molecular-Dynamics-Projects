@@ -1,0 +1,43 @@
+#!/bin/bash
+#SBATCH -J rings_15-22
+#SBATCH -N 1
+#SBATCH --partition mem_0096
+#SBATCH --qos=mem_0096
+#SBATCH --ntasks-per-node=48        ## number of tasks per node
+#SBATCH --ntasks-per-core=2
+#SBATCH --time=72:00:00
+
+#module load python/3.7.4-gcc-9.1.0-5yphnp3  py-numpy/1.20.2-gcc-9.1.0-eghdfho py-espresso/4.1.2-gcc-9.1.0-w3mh5t5
+module load boost/1.72.0-gcc-9.1.0-xhjiqkx cmake/3.15.1-gcc-9.1.0-kxy5cmh fftw/3.3.8-gcc-9.1.0-zxvbyp2 gcc/9.1.0-gcc-4.8.5-mj7s6dg hdf5/1.10.5-gcc-9.1.0-ltwm3rl intel-mkl/2019.5-gcc-9.1.0-h3h2d4v intel-mpi/2019.7 py-cython/0.29.7-gcc-9.1.0-rxwg37d py-numpy/1.17.4-gcc-9.1.0-4dhjjqp py-setuptools/41.0.1-gcc-9.1.0-bhxz5xo python/3.7.4-gcc-9.1.0-g6ol2lr py-scipy/1.3.1-gcc-9.1.0-k4w2jqr 
+
+spack load -r py-matplotlib@3.1.1. %gcc@9.1.0
+spack load -r py-pandas@0.25.0
+
+for i in {15..22}
+do 
+echo 'Initialization' 
+echo $i
+~/espresso/build/pypresso initial_poly.py /gpfs/data/fs71642/manos4/single_chain_dilute_magnetics/RUN_$i/ &
+done 
+wait
+
+for i in {15..22}
+do
+echo 'RUN'
+echo $i
+for j in 1 2 3 4 5 6
+do
+echo $j
+~/espresso/build/pypresso restart_min_poly.py mycheck_passive $j /gpfs/data/fs71642/manos4/single_chain_dilute_magnetics/RUN_$i/lambda_$j &
+done
+done
+wait
+
+for i in {15..22}
+do
+echo 'Tar' 
+echo $i
+tar -zcvf /gpfs/data/fs71642/manos4/single_chain_dilute_magnetics/RUN_$i.tar.gz /gpfs/data/fs71642/manos4/single_chain_dilute_magnetics/RUN_$i/ 
+rm -rf /gpfs/data/fs71642/single_chain_dilute_magnetics/RUN_$i/*
+done
+
