@@ -106,8 +106,28 @@ def self_fft(r):
     for i in range(r.shape[1]):
         s2 += _autocorr_fft(r[:, i])
     return (s1 - 2*s2) / np.arange(N, 0, -1)
-###################################################################
 
+#### MSIDs ########
+@njit 
+def compute_msid(positions, start, stop, num_rings, num_mons):
+    
+    s = np.arange(1, stop-start)
+    msid = np.zeros_like(s, dtype=np.float64)
+    upds = np.zeros_like(s, dtype=np.int64)
+    
+    for n in range(num_rings):
+        r = positions[n*num_mons:(n+1)*num_mons]
+        for index, ds in enumerate(s):            
+            i = start
+            j = start + ds
+            while j < stop:
+                dr = r[j] - r[i]
+                msid[index] += dr[0]*dr[0] + dr[1]*dr[1] + dr[2]*dr[2]
+                upds[index] += 1    
+                j += 1
+                i += 1
+    return s, msid/upds
+###################################################################
 
 
 
@@ -144,7 +164,9 @@ etoe_directory='endtoend_results'
 
 if not os.path.exists(etoe_directory):
     os.makedirs(etoe_directory)
-
+msid_dir='msid_results'
+if not os.path.exists(msid_dir):
+    os.makedirs(msid_dir)
 
 frames=10000
 skipframes=1000
@@ -209,7 +231,7 @@ for d in part_dict:
                     gg.write('\n')
                     break
 
-
+            frames=count_frames
             mean_pos=pos.mean(axis=1).reshape(-1, 1, 3)
             #pos-=mean_pos
             end=timer()
@@ -250,7 +272,7 @@ for d in part_dict:
             print('G3 shape',g3s[0].shape)
             print('time shape',time.shape)
             np.savetxt(directory+'/'+d+'_g3_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],g3s[0]),axis=-1)))
-            run_count+=1
+            
 
 
             rgs_tens= np.zeros((nchains, frames,3,3))
@@ -296,6 +318,14 @@ for d in part_dict:
             print('rg tensor shape',rg_tensor_eigen.shape)
             np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
             np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d_lambda_%d.dat'%(run_count,i),(np.column_stack([time[:],rg_tensor_eigen])))
+
+            ### Internal Distances #####
+            msid_dist=np.zeros((np.arange(0,int(DP/2).size),frames+1))
+            for ii in range (frames):
+                msid_dist[:,0],msid_dist[:,ii]=compute_msid(pos[:,ii], 0, int(DP/2), nch, DP)
+            msid_dist[:,-1]=np.mean(msid[:,1:-1],axis=1)
+            np.savetxt(msid_dir+'/'+d+'msids_RUN_%d_lambda_%d.dat'%(run_count,i))
+            run_count+=1
         f.close()
 
 
