@@ -1,7 +1,7 @@
-from this import d
 import numpy as np 
 #import MDAnalysis as mda
 from matplotlib import pyplot as plt 
+import matplotlib as mpl
 from numba import njit
 import sys
 from timeit import default_timer as timer
@@ -13,10 +13,30 @@ import os
 from numba import njit
 import tarfile
 from utils import *
+import scipy.stats as st
 
+#############  Plots Setup #####################
+mpl.rcParams['figure.dpi'] = 400
+plt.rcParams["font.family"] = "Ubuntu"
+plt.style.use('~/plotstyle.mplstyle')
+plt.rcParams['axes.linewidth'] = 4
+plt.rcParams['xtick.major.size'] = 8 
+plt.rcParams['ytick.major.size'] = 8 
+plt.rcParams['xtick.labelsize']=20
+plt.rcParams['ytick.labelsize']=20
+plt.rcParams['xtick.minor.visible']=True
+plt.rcParams['ytick.minor.visible']=True
+plt.rcParams['xtick.minor.size'] = 5 
+plt.rcParams['ytick.minor.size'] = 5
+plt.rcParams['xtick.minor.width'] = 1.5
+plt.rcParams['ytick.minor.width'] = 1.5
+plt.rcParams['xtick.major.width'] = 2
+plt.rcParams['ytick.major.width'] = 2
+plt.rcParams['xtick.major.pad']='8'
+plt.rcParams['ytick.major.pad']='8'
+#########################################################################################################
 
 class analysis_equil():
-
     def __init__(self,path,frames,warm_frames,run_steps,nchains,DP,L,arch_key):
         self.path=path
         self.frames=frames
@@ -293,9 +313,46 @@ class analysis_dipol():
 class plot_equil():
 
 
+
+
+
 ################################################################################################################
 
 class plot_dipol():
+    def __init__(self,path,xmin,xmax)
+        self.path=path
+        self.xmin=xmin
+        self.xmax=xmax
+        os.chdir(self.path)
+        dir_names=['timeseries','distributions','2d_distributions','correlations']
+        for nam in dir_names:
+            if os.path.isdir(nam)==False:
+                os.mkdir(nam)
+        self.gyr_t_files=
+        self.gyr_dist_files=
+        self.eigen_t_files=
+        self.eigen_dist_files=
+        self.shape_files_rg=
+        self.shape_files=
+
+    def plot_gyr(self):
+        plot_corr_rg('tsa',self.gyr_t_files,self.xmin,self.xmax)
+        plot_corr_rg('rg',self.gyr_t_files,self.xmin,self.xmax)
+        print('Done with gyration timeseries and correlation')
+        self.rgsq=rg_dist(self.gyr_dist_files,self.xmin,self.xmax)
+        print('Done with gyration distribution')
+        plot_eigen(self.eigen_t_files,self.xmin,self.xmax,self.rgsq)
+        eigen_dist(self.eigen_dist_files,self.rgsq)
+        print('Done with eigen values distribution')
+        shape_avg(self.shape_files,self.shape_files_rg)
+
+    def plot_msds(self):
+        int
+
+    def plot_msids(self):
+
+
+
 
 
 ################################################################################################################
