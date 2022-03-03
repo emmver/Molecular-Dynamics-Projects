@@ -1,20 +1,4 @@
-import numpy as np 
-from matplotlib import pyplot as plt 
-from numba import njit
-import sys
-from timeit import default_timer as timer
-from scipy.stats import gaussian_kde,iqr
-import glob
-import ctypes
-import matplotlib as mpl
-import os
-from numba import njit
-import tarfile
-from utils import *
-
-
 class analysis_equil():
-
     def __init__(self,path,frames,warm_frames,run_steps,nchains,DP,L,arch_key):
         self.path=path
         self.frames=frames
@@ -147,7 +131,7 @@ class analysis_equil():
 
 ################################################################################################################
 class analysis_dipol():
-    def __init__(self,path,frames,warm_frames,run_steps,nchains,DP,L,how_many,dipol,arch_key):
+    def __init__(self,path,frames,warm_frames,run_steps,time_step,nchains,DP,L,how_many,dipol,arch_key):
         self.path=path
         self.frames=frames
         self.warm_frames=warm_frames
@@ -159,6 +143,7 @@ class analysis_dipol():
         self.arch_key=arch_key
         self.part_dict=['total','active','passive']
         self.dipol=dipol
+        self.time_step=time_step
         ######################
         os.chdir(self.path)
         self.directory='msds_results'
@@ -217,6 +202,11 @@ class analysis_dipol():
                 self.pos=self.pos[:count_frames,:,:]
                 print('stopped at',self.count_frames)
                 break
+        self.time = np.zeros(self.pos.shape[0])
+        count=0
+        for tt in tqdm(range(self.pos.shape[0]),desc='Time array'):
+            self.time[tt]=count*self.run_steps*self.time_step
+            count+=1
         pbar.close()
 
     def calc_g1(self):
@@ -291,9 +281,196 @@ class analysis_dipol():
 class plot_equil():
 
 
+
+
+
 ################################################################################################################
 
 class plot_dipol():
+    def __init__(self,path,xmin,xmax,act_key,dipol,points,how_many,nchains,DP)
+        self.path=path
+        self.xmin=xmin
+        self.xmax=xmax
+        self.act_key=act_key
+        self.dipol=dipol
+        self.points=points
+        self.how_many=how_many
+        self.nchains=nchains
+        self.DP=DP
+        os.chdir(self.path)
+        os.mkdir(self.act_key)
+        os.popen('cp *'+self.act_key+'*.dat ./'+self.act_key) 
+        self.dir_names=['timeseries','distributions','2d_distributions','correlations']
+        self.x=np.linspace(self.xmin,self.xmax,self.points)
+        for nam in self.dir_names:
+            if os.path.isdir(self.act_key+'/'+nam)==False:
+                print('Make Dir:',self.act_key+'/'+nam)
+                os.mkdir(self.act_key+'/'+nam)
+        self.gyr_path='./gyration_results'
+        self.msds_path='./msds_results'
+        self.msid_path='./msid_results'
+        self.gyr_t_files=glob.glob(self.gyr_path+'/'+self.act_key+'/*%s*.dat'%key)
+        self.gyr_dist_files=glob.glob(self.gyr_path+'/'+self.act_key+'/*rg*.dat')
+        self.eigen_t_files=glob.glob(self.gyr_path+'/'+self.act_key+'/timeseries/lambda_*.avg')
+        self.eigen_dist_files=glob.glob(self.gyr_path+'/'+self.act_key+'/*_eigen*.dat')
+        self.shape_files=glob.glob(self.act_key+'/timeseries/lambda*.avg')
+        self.shape_files_rg=glob.glob(self.act_key+'/timeseries/*rg.avg')
+        self.g1_files=glob.glob(self.msds_path+'/'+self.act_key+'_g1_RUN_*_lambda_%d.dat'%self.dipol)
+        self.g3_files=glob.glob(self.msds_path+'/'+self.act_key+'_g1_RUN_*_lambda_%d.dat'%self.dipol)
+        self.g1_files_three_sp=glob.glob(self.msds_path+'/avg'+'*_g1_lambda_%d.avg'%self.dipol)
+        self.g3_files_three_sp=glob.glob(self.msds_path+'/avg'+'*_g3_lambda_%d.avg'%self.dipol)
+        self.g1_files_lambda=glob.glob(self.msds_path+'/avg'+self.act_key+'_g1_lambda_*.avg')
+        self.g3_files_lambda=glob.glob(self.msds_path+'/avg'+self.act_key+'_g3_lambda_*.avg')
+
+    def plot_gyr(self):
+        print('Files to plot')
+        print(self.gyr_t_files)
+        plot_corr_rg('tsa',self.xmin,self.xmax,self.gyr_t_files,self.points)
+        plot_corr_rg('rg',self.xmin,self.xmax,self.gyr_t_files,self.points)
+        print('Done with gyration timeseries and correlation')
+        self.rgsq=rg_dist(self.xmin,self.xmax,self.points)
+        print('Done with gyration distribution')
+        plot_eigen(self.xmin,self.xmax,self.rgsq,self.eigen_t_files,self.points)
+        eigen_dist(self.rgsq)
+        print('Done with eigen values distribution')
+        print(self.shape_files)
+        print(self.shape_files_rg)
+        shape_avg(self.shape_files,self.shape_files_rg)
+
+    def plot_msds_avg(self):
+        #files=glob.glob(stored_path+'/'+d+'_g1_RUN_*_lambda_%d.dat'%(i))
+        print(self.g1_files)
+        g1_avg=np.zeros((self.points,2))
+        g3_avg=np.zeros((self.points,2))
+       
+        add_path=os.path.dirname(os.path.abspath(self.g1_files[0]))
+        colors = pl.cm.Greens(np.linspace(0,0.8,len(self.g1_files)))
+
+        if self.act_key=='total':
+            npart=self.nchains*self*DP
+        elif self.act_key=='active': 
+            npart=self.nchains*self*DP*how_many
+        elif self.act_key=='passive': 
+            npart=self.nchains*self*DP*(1-how_many)
+        count=0
+        for j in self.g1_files: 
+            data=np.genfromtxt(j)
+            data_interp+=np.interp(x,data[:,0],data[:,1])
+            plt.loglog(self.x,data_interp[:,1]/npart,lw=1,linestyle='--',color=colors[count])
+            g1_avg[:,1]+=data_interp[:,1]
+            count+=1
+        g1_avg[:,1]=g1_avg[:,1]/len(files)
+        plt.loglog(self.x,g1_avg[:,1]/npart,lw=1,color=trump_color)
+        plt.title('$\lambda$=%d/%s'%(self.dipol,self.act_key))
+        plt.xlabel(r'Time [$\tau_0$]')
+        plt.ylabel(r'$\dfrac{g^1 (t)}{N} [\sigma^2]$')  
+        plt.savefig(add_path+'/'+self.act_key+'_g1_lambda_%d.jpg'%(self.dipol),dpi=300,bbox_inches='tight')
+#        plt.show()
+        plt.clf()
+        g1_avg[:,0]=self.x
+        np.savetxt(add_path+'/avg_'+self.act_key+'_g1_lambda_%d.avg'%(self.dipol),g1_avg)
+
+        for j in self.g3_files: 
+            data=np.genfromtxt(j)
+            data_interp+=np.interp(x,data[:,0],data[:,1])
+            plt.loglog(self.x,data_interp[:,1]/self.nchains,lw=1,linestyle='--')
+            g3_avg[:,1]+=data_interp[:,1]
+        g3_avg[:,1]=g3_avg[:,1]/len(files)
+        plt.loglog(self.x,g3_avg[:,1]/self.nchains,lw=1,color=trump_color)
+        plt.title('$\lambda$=%d/%s'%(self.dipol,self.act_key))
+        plt.xlabel(r'Time [$\tau_0$]')
+        plt.ylabel(r'$\dfrac{g^3 (t)}{M} [\sigma^2]$')  
+        plt.savefig(add_path+'/'+self.act_key+'_g3_lambda_%d.jpg'%(self.dipol),dpi=300,bbox_inches='tight')
+#        plt.show()
+        plt.clf()
+        g3_avg[:,0]=self.x
+        np.savetxt(add_path+'/avg_'+self.act_key+'_g3_lambda_%d.avg'%(self.dipol),g3_avg)
+    
+    def plot_msds_lambda(self):
+        count=0
+        add_path=os.path.dirname(os.path.abspath(self.g1_files_lambda[0]))
+        colors = pl.cm.cividis(np.linspace(0,1,len(self.g1_files_lambda)))
+        print('g1 files - lambda:',self.g1_files_lambda)
+        for i in self.g1_files_lambda: 
+            data=np.genfromtxt(i)
+            plt.loglog(data[:,0],data[:,1]/npart,label='$\lambda$=%d'%(count+1),color=colors[count])
+            plt.legend(frameon=False,ncol=2)
+            plt.title(d)
+            plt.xlabel(r'Time [$\tau_0$]')
+            plt.ylabel(r'$\dfrac{g^1 (t)}{N} [\sigma^2]$')
+            plt.savefig(add_path+'/'+'g1_lambda_dep_%s.png'%self.act_key,dpi=300,bbox_inches='tight')
+            count+=1
+        #plt.show()
+        plt.clf()
+        count=0
+        print('g3 files - lambda:',self.g3_files_lambda)
+        for i in self.g3_files_lambda: 
+            data=np.genfromtxt(i)
+            plt.loglog(data[:,0],data[:,1]/self.nchains,label='$\lambda$=%d'%(count+1),color=colors[count])
+            plt.legend(frameon=False,ncol=2)
+            plt.title(d)
+            plt.xlabel(r'Time [$\tau_0$]')
+            plt.ylabel(r'$\dfrac{g^3 (t)}{M} [\sigma^2]$')
+            plt.savefig(add_path+'/'+'g3_lambda_dep_%s.png'%self.act_key,dpi=300,bbox_inches='tight')
+            count+=1
+        #plt.show()
+        plt.clf()
 
 
-################################################################################################################
+    def plot_msds_three_sp(self):
+        legend_dict=['total','active','passive']
+        add_path=os.path.dirname(os.path.abspath(self.g1_files_three_sp[0]))
+        for nam in legend_dict:
+            if nam=='total':
+                npart=self.nchains*self*DP
+            elif nam=='active': 
+                npart=self.nchains*self*DP*how_many
+            elif nam=='passive': 
+                npart=self.nchains*self*DP*(1-how_many)
+            for file in self.g1_files_three_sp:
+                if (self.msds_path+'/avg'+nam+'_g1_lambda_%d.avg'%self.dipol)==file:
+                    print('##################################')
+                    print('Choosing legend input g1')
+                    print(nam,file)
+                    print('##################################')
+                    leg=nam
+                    break
+            data=np.genfromtxt(file)
+            plt.loglog(data[:,0],data[:,1]/npart,legend=nam)
+            plt.legend(frameon=False,ncol=2)
+            plt.title(r'$\lambda=%d$'%self.dipol)
+            plt.xlabel(r'Time [$\tau_0$]')
+            plt.ylabel(r'$\dfrac{g^1 (t)}{N} [\sigma^2]$')
+        plt.savefig(add_path+'/'+'g1_three_species_%d.png'%i,dpi=300,bbox_inches='tight')
+        plt.clf()
+        for nam in legend_dict:
+            for file in self.g3_files_three_sp:
+                if (self.msds_path+'/avg'+nam+'_g3_lambda_%d.avg'%self.dipol)==file:
+                    print('##################################')
+                    print('Choosing legend input g3')
+                    print(nam,file)
+                    print('##################################')
+                    leg=nam
+                    break
+            data=np.genfromtxt(file)
+            plt.loglog(data[:,0],data[:,1]/self.nchains,legend=nam)
+            plt.legend(frameon=False,ncol=2)
+            plt.title(r'$\lambda=%d$'%self.dipol)
+            plt.xlabel(r'Time [$\tau_0$]')
+            plt.ylabel(r'$\dfrac{g^3 (t)}{M} [\sigma^2]$')
+        plt.savefig(add_path+'/'+'g3_three_species_%d.png'%i,dpi=300,bbox_inches='tight')
+        plt.clf()
+
+
+    def plot_msids_species(self):
+        dict_file=['total','active','passive']
+        for d in dict_file:
+            filename=d+sys.argv[1][-24:]
+            print(filename)
+            data=np.genfromtxt(filename)
+            plt.plot(data[:,0],data[:,-1],label='%s'%d)
+
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.legend()
+        plt.show()

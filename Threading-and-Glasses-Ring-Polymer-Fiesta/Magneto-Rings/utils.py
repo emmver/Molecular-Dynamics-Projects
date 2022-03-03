@@ -5,10 +5,8 @@ from numba import njit
 import sys
 from timeit import default_timer as timer
 from scipy.stats import gaussian_kde,iqr
-import glob
 import ctypes
 import matplotlib as mpl
-import os
 from numba import njit
 import glob 
 import os 
@@ -34,6 +32,13 @@ def read_traj(f,npart):
     f.readline()
     return out
 
+def find_xmax(files):
+    xmax=1e50
+    for i in files: 
+        data=np.genfromtxt(i)
+        if data[-1,0]<xmax:
+            xmax=data[-1,0]
+    return xmax
 
 ######### Calculate Gyration Tensor #######################3
 @njit(fastmath=True)
@@ -62,15 +67,12 @@ def coms_times(pos,pos_coms,Dpolsm,nsmall,frames):
     for i in range (frames):
         data_small=pos[i]
         for j in range (nsmall):
-            #print("Calculating small chain",j)
             workdata=data_small[j*Dpolsm:(j+1)*Dpolsm]
             #print(workdata.shape)
             comx=np.sum(workdata[:,0])
             comy=np.sum(workdata[:,1])
             comz=np.sum(workdata[:,2])
             com = np.array([comx,comy,comz])/(workdata[:,0].size)
-            #print('COM is:',com)
-            #com=CoM(workdata,workdata[:,0].size)
             pos_coms[i][j]=com
     return pos_coms
 #### MSD Libs #######
@@ -137,45 +139,22 @@ def compute_msid(positions, start, stop, num_rings, num_mons):
 ###################################################################
 
 ################# Plotting Functions ##############################
-def kde_scipy(x, x_grid,bw_idx,**kwargs):
-    """Kernel Density Estimation with Scipy"""
-    # Note that scipy weights its bandwidth by the covariance of the
-    # input data.  To make the results comparable to the other methods,
-    # we divide the bandwidth by the sample standard deviation here.
-    filename='./distributions/bw.ls'
-    if os.path.isfile(filename)==True:
-        bwls=np.genfromtxt(filename)
-        bandwidth=bwls[bw_idx]
-    else:
-        bandwidths = np.linspace(0.01, 0.5, 50)
-        print("BW search...")
-        grid = GridSearchCV(KernelDensity(kernel='gaussian'),
-                            {'bandwidth': bandwidths},
-                            cv=3,verbose=2,n_jobs=3)
-        grid.fit(x[:, None]);
-        bandwidth=grid.best_params_.get('bandwidth')
-        print('Bandwidth for KDE:',bandwidth)
-    kde = gaussian_kde(x, bw_method=bandwidth/ x.std(ddof=1) , **kwargs)
-    bws.append(bandwidth)
-    return kde.evaluate(x_grid)
-
-
-def plot_corr_rg(key,xmin,xmax):
-    files=glob.glob('*%s*.dat'%key)
+def plot_corr_rg(key,xmin,xmax,files,points):
     idx=1
     if key=='tsa':
         plt.ylabel(r'$C^{R_g} [\tau]$')
-        x=np.linspace(xmin,xmax,10000)
+        x=np.linspace(xmin,xmax,points)
         start_from=0
         to_store='correlations'
     elif key=='rg':
         plt.ylabel(r'$R_g (t) [\sigma]$')
-        x=np.linspace(xmin,xmax,10000)
+        x=np.linspace(xmin,xmax,points)
         start_from=2
         to_store='timeseries'
-
     colors = plt.cm.Dark2(np.linspace(0,1,len(files)))
     data_interp=np.zeros(x.shape)
+    add_path=os.path.dirname(os.path.abspath(files[0]))+'/'+to_store
+    print('Add path:',add_path)
     for file in files: 
         data=np.genfromtxt(file)
         data[:,0]-=data[0,0]
@@ -189,17 +168,18 @@ def plot_corr_rg(key,xmin,xmax):
     plt.plot(x[start_from:],data_interp[start_from:]/(idx-1),color='r',lw=3)
     plt.xlim(500,5e6)
     plt.legend(frameon=False,loc=(1.0,0.0))
-    plt.savefig(to_store+'/'+key+'.jpg',dpi=300,bbox_inches='tight')
-    np.savetxt(to_store+'/average_%s.avg'%key,np.stack((x[:],data_interp[:]/(idx-1)),axis=-1))
+    plt.savefig(add_path+'/'+key+'.jpg',dpi=300,bbox_inches='tight')
+    np.savetxt(add_path+'/average_%s.avg'%key,np.stack((x[:],data_interp[:]/(idx-1)),axis=-1))
     #plt.show()
     plt.clf()
 
-def plot_eigen(xmin,xmax,rgsq):
-    files=glob.glob('*_eigen*.dat')
+def plot_eigen(xmin,xmax,rgsq,files,points):
     start_from=2
     colors = plt.cm.Dark2(np.linspace(0,1,len(files)))
-    x=np.linspace(xmin,xmax,10000)
+    x=np.linspace(xmin,xmax,points)
     plot_avg=np.zeros((x.shape[0],3))
+    add_path=os.path.dirname(os.path.abspath(files[0]))
+    print('Add path:',add_path)
     for i in range(1,4):
         idx=1
         data_interp=np.zeros(x.shape)
@@ -219,8 +199,8 @@ def plot_eigen(xmin,xmax,rgsq):
         plt.plot(x[start_from:],data_interp[start_from:]/(idx-1),color='r',lw=3)
         plt.legend(frameon=False,loc=(1.0,0.0))
         plt.xlim(500,5e6)
-        plt.savefig('./timeseries/lambda_%d.jpg'%i,dpi=300,bbox_inches='tight')
-        np.savetxt('./timeseries/lambda_%d_average.avg'%i,np.stack((x[:],data_interp[:]/(idx-1)),axis=-1))
+        plt.savefig(add_path+'/timeseries/lambda_%d.jpg'%i,dpi=300,bbox_inches='tight')
+        np.savetxt(add_path+'/timeseries/lambda_%d_average.avg'%i,np.stack((x[:],data_interp[:]/(idx-1)),axis=-1))
         #plt.show()
         plt.clf()
     colors = plt.cm.Set1(np.linspace(0,1,plot_avg.shape[1]))
@@ -230,15 +210,17 @@ def plot_eigen(xmin,xmax,rgsq):
     plt.ylabel(r'$\dfrac{\lambda_i (t)}{\left<R_g^2\right>} $')
     plt.xscale('log')
     plt.legend(frameon=False)
-    plt.savefig('./timeseries/eigen_values_avg.jpg',dpi=300,bbox_inches='tight')
+    plt.savefig(add_path+'/timeseries/eigen_values_avg.jpg',dpi=300,bbox_inches='tight')
     plt.clf()
 
-def rg_dist(xmin,xmax):
-    x=np.linspace(xmin,xmax,10000)
+def rg_dist(xmin,xmax,files_rg,points):
+    x=np.linspace(xmin,xmax,points)
     start_from=1
-    files_rg=glob.glob('*rg*.dat')
+    #files_rg=glob.glob('*rg*.dat')
     data_interp_rg=np.zeros(x.shape)
     idx=0
+    add_path=os.path.dirname(os.path.abspath(files[0]))
+    print('Add path:',add_path)
     for file in files_rg:
         data_rg=np.genfromtxt(file)
         data_rg[:,0]-=data_rg[0,0]
@@ -264,7 +246,7 @@ def rg_dist(xmin,xmax):
     plt.fill_between(bins[:-1],hist,step='pre',alpha=0.4)
     plt.xlabel(r'$R_g [\sigma]$')
     plt.ylabel(r'$P(R_g) $')
-    plt.savefig('./distributions/histograms_rg.jpg',dpi=300,bbox_inches='tight')
+    plt.savefig(add_path+'/distributions/histograms_rg.jpg',dpi=300,bbox_inches='tight')
     plt.clf()
     x_grid = np.linspace(rgs.min()-0.1*rgs.min(), rgs.max()+0.1*rgs.max(), 100)
     pdf=kde_scipy(data_interp_rg,x_grid,bw_idx)
@@ -277,15 +259,17 @@ def rg_dist(xmin,xmax):
     plt.plot(x_grid,gauss,'k--')
     plt.ylabel(r'$P(R_g) $')
     plt.xlabel(r'$R_g [\sigma]$')
-    plt.savefig('./distributions/kde_rg.jpg',dpi=300,bbox_inches='tight')
-    np.savetxt('./distributions/avg_kde_rg.avg',np.stack((x_grid,pdf),axis=-1))
+    plt.savefig(add_path+'/distributions/kde_rg.jpg',dpi=300,bbox_inches='tight')
+    np.savetxt(add_path+'/distributions/avg_kde_rg.avg',np.stack((x_grid,pdf),axis=-1))
     plt.clf()
     return mean**2
 
-def eigen_dist(rgsq):
-    files_rg=glob.glob('./timeseries/lambda_*.avg')
+def eigen_dist(rgsq,files):
+    #files_rg=glob.glob('./timeseries/lambda_*.avg')
     idx=1
     colors = plt.cm.Set1(np.linspace(0,1,len(files_rg)))
+    add_path=os.path.dirname(os.path.dirname(os.path.abspath(files[0])))
+    print('Add path:',add_path)
     for file in files_rg:
         print(file)
         data_interp_rg=np.genfromtxt(file)[:,1]/rgsq
@@ -304,7 +288,7 @@ def eigen_dist(rgsq):
         std=np.sqrt(np.trapz((x_grid-mean)**2*pdf,x=x_grid)); print('Standard deviation:',std)
         plt.plot(x_grid,pdf,label=r'$lambda_%d$'%idx,color=colors[idx-1])
         plt.fill_between(x_grid,pdf,alpha=0.4,color=colors[idx-1])
-        np.savetxt('./distributions/avg_kde_lambda_%d.avg'%idx,np.stack((x_grid,pdf),axis=-1))
+        np.savetxt('.os/distributions/avg_kde_lambda_%d.avg'%idx,np.stack((x_grid,pdf),axis=-1))
         idx+=1
     plt.legend(frameon=False)
     plt.ylabel(r'$P(\dfrac{\lambda_i (t)}{\left<R_g^2\right>}) $')
@@ -314,6 +298,8 @@ def eigen_dist(rgsq):
     idx+=1
 
 def shape_avg(files,rgfile):
+    add_path=os.path.dirname(os.path.dirname(os.path.abspath(rgfiles[0])))
+    print('Add path:',add_path)
     lambda_1=np.genfromtxt(files[0])
     time=lambda_1[:,0]
     lambda_1=lambda_1[:,1]
@@ -329,17 +315,17 @@ def shape_avg(files,rgfile):
     plt.xscale('log')
     plt.ylabel(r'$\delta$')
     plt.xlabel(r'$\tau [\tau_0]$')
-    plt.savefig('./timeseries/anisotropy.jpg',dpi=300,bbox_inches='tight')
+    plt.savefig(add_path+'/timeseries/anisotropy.jpg',dpi=300,bbox_inches='tight')
     plt.clf()
-    np.savetxt('./timeseries/anisotropy.avg',np.stack((time,anis),axis=-1))
+    np.savetxt(add_path+'/timeseries/anisotropy.avg',np.stack((time,anis),axis=-1))
     prolat=((3*lambda_1-i_1)*(3*lambda_2-i_1)*(3*lambda_3-i_1))/i_1**3 ## Shape prolateness 
     plt.plot(time,prolat)
     plt.xscale('log')
     plt.ylabel(r'S*')
     plt.xlabel(r'$\tau [\tau_0]$')
-    plt.savefig('./timeseries/prolateness.jpg',dpi=300,bbox_inches='tight')
+    plt.savefig(add_path+'/timeseries/prolateness.jpg',dpi=300,bbox_inches='tight')
     plt.clf()
-    np.savetxt('./timeseries/prolateness.avg',np.stack((time,prolat),axis=-1))
+    np.savetxt(add_path+'/timeseries/prolateness.avg',np.stack((time,prolat),axis=-1))
     rgs=np.genfromtxt(rgfile[0])[:,1]
     # print(rgs.shape);print(prolat.shape)
     # sns.kdeplot(x=rgs, y=prolat, cmap="Reds", shade=False, bw_adjust=np.array(bws).mean(),thresh=0)
@@ -347,6 +333,6 @@ def shape_avg(files,rgfile):
     # #plt.ylabel(r)
     plt.hist2d(rgs,prolat,bins=50,density=True,cmap='jet')
     plt.colorbar()
-    plt.savefig('./2d_distributions/prolat_rg.jpg',dpi=300,bbox_inches='tight')
+    plt.savefig(add_path+'/2d_distributions/prolat_rg.jpg',dpi=300,bbox_inches='tight')
     plt.show()
 ##################################################################

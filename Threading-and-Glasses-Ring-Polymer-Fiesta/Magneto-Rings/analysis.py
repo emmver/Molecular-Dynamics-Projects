@@ -113,6 +113,7 @@ def compute_msid(positions, start, stop, num_rings, num_mons):
     
     s = np.arange(1, stop-start)
     msid = np.zeros_like(s, dtype=np.float64)
+    #print(msid.shape)
     upds = np.zeros_like(s, dtype=np.int64)
     
     for n in range(num_rings):
@@ -151,6 +152,7 @@ plt.rcParams['ytick.major.width'] = 2
 plt.rcParams['xtick.major.pad']='8'
 plt.rcParams['ytick.major.pad']='8'
 #########################################################################################################
+os.chdir(sys.argv[1])
 directory='msds_results'
 import os
 if not os.path.exists(directory):
@@ -168,23 +170,27 @@ msid_dir='msid_results'
 if not os.path.exists(msid_dir):
     os.makedirs(msid_dir)
 
-frames=10000
-skipframes=1000
-run_steps=1000
+frames_in=10000
+skipframes=2000
+run_steps=10000
 nchains=1
+nch=nchains
 DP=200
 Dpol=DP
 L=80
 box=L
 npart=int(nchains*DP)
-bonds=npart
+if sys.argv[2]=='ring':
+    bonds=npart
+elif sys.argv[2]=='linear':
+    bonds=npart-1
 angles=0
 how_many=0.5 
 part_dict=['total','active','passive']
 
 for d in part_dict:
     print('NOW RUNNING',d)
-    for i in range(1,7):
+    for i in range(1,5):
         print('lambda:',i)
         #files_list=[]
         paths=glob.glob("RUN_*/lambda_%d/polymer_magnetic.vtf"%(i))
@@ -199,9 +205,9 @@ for d in part_dict:
             print("Working on file",file)
             f=open(file,'r')
             if d==part_dict[1] or d==part_dict[2]:
-                    pos=np.zeros((int(frames),int(npart*how_many),3))
+                    pos=np.zeros((int(frames_in),int(npart*how_many),3))
             else:
-                pos=np.zeros((int(frames),(npart),3))
+                pos=np.zeros((int(frames_in),(npart),3))
             for ii in range (int(npart)+bonds+angles+2):
                     f.readline()
             print(f.readline())
@@ -227,106 +233,118 @@ for d in part_dict:
                 except Exception as e:
                     print("Except:",e)
                     print('stopped at',count_frames)
+                    pos=pos[:count_frames,:,:]
                     gg.write('%d'%count_frames)
                     gg.write('\n')
                     break
 
             frames=count_frames
             mean_pos=pos.mean(axis=1).reshape(-1, 1, 3)
-            #pos-=mean_pos
-            end=timer()
-            print('Wall Time:',end-start)
-            time = np.zeros(frames)
-            count=0
-            for tt in range(frames):
-                time[tt]=count*run_steps
-                count+=1
-            msds = np.zeros((npart, frames))
-            for ii in range(pos.shape[1]):
-                start=timer()
-                msds[ii] = self_fft(pos[:,ii])
-                end=timer()
-                g="Particle %d Wall time %.4f seconds"%(ii, end-start)
-            #     sys.stdout.write("\r" + str(g))
-            #     sys.stdout.write('\n')
-            #     sys.stdout.flush()
-            # #       np.savetxt('./'+file[:-4]+'_g1_all.dat',(np.stack((msds),axis=-1)))
-            np.savetxt(directory+'/'+d+'_g1_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],msds.mean(axis=0)[:]),axis=-1)))
-            nch=int(nchains)
-            pos+=mean_pos
-            pos_coms=np.zeros((frames,nch,3))
-            pos_coms=coms_times(pos,pos_coms,Dpol,nch,frames)
-            np.savetxt('pos_coms.txt',pos_coms[:,0])
-            print('Shape POS',pos_coms.shape) 
-            #pos=np.zeros((len(files),npart,3))
-            g3s = np.zeros((nch,frames))
-            for ii in range(pos_coms.shape[1]):
-                start=timer()
-                g3s[ii] = self_fft(pos_coms[:,ii])
-                end=timer()
-            #     g="Chain %d Wall time %.4f seconds"%(ii, end-start)
-            #     sys.stdout.write("\r" + str(g))
-            #     sys.stdout.write('\n')
-            #     sys.stdout.flush()
-            # #print("================= COMs g3 =================")
-            print('G3 shape',g3s[0].shape)
-            print('time shape',time.shape)
-            np.savetxt(directory+'/'+d+'_g3_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],g3s[0]),axis=-1)))
+            # #pos-=mean_pos
+            # end=timer()
+            # print('Wall Time:',end-start)
+            # time = np.zeros(frames)
+            # count=0
+            # for tt in range(frames):
+            #     time[tt]=count*run_steps
+            #     count+=1
+            # msds = np.zeros((npart, frames))
+            # #print(msds.shape)
+            # for ii in range(pos.shape[1]):
+            #     start=timer()
+            #     msds[ii] = self_fft(pos[:,ii])
+            #     end=timer()
+            #     g="Particle %d Wall time %.4f seconds"%(ii, end-start)
+            # #     sys.stdout.write("\r" + str(g))
+            # #     sys.stdout.write('\n')
+            # #     sys.stdout.flush()
+            # # #       np.savetxt('./'+file[:-4]+'_g1_all.dat',(np.stack((msds),axis=-1)))
+            # np.savetxt(directory+'/'+d+'_g1_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],msds.mean(axis=0)[:]),axis=-1)))
+            # nch=int(nchains)
+            # #pos+=mean_pos
+            # pos_coms=np.zeros((frames,nch,3))
+            # pos_coms=coms_times(pos,pos_coms,Dpol,nch,frames)
+            # np.savetxt('pos_coms.txt',pos_coms[:,0])
+            # print('Shape POS',pos_coms.shape) 
+            # #pos=np.zeros((len(files),npart,3))
+            # g3s = np.zeros((nch,frames))
+            # for ii in range(pos_coms.shape[1]):
+            #     start=timer()
+            #     g3s[ii] = self_fft(pos_coms[:,ii])
+            #     end=timer()
+            # #     g="Chain %d Wall time %.4f seconds"%(ii, end-start)
+            # #     sys.stdout.write("\r" + str(g))
+            # #     sys.stdout.write('\n')
+            # #     sys.stdout.flush()
+            # # #print("================= COMs g3 =================")
+            # print('G3 shape',g3s[0].shape)
+            # print('time shape',time.shape)
+            # np.savetxt(directory+'/'+d+'_g3_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],g3s[0]),axis=-1)))
             
 
 
-            rgs_tens= np.zeros((nchains, frames,3,3))
-            for ii in range (frames):
-                    g="Frame:%d"%(ii+1)
-                    sys.stdout.write("\r" + str(g))
-                    sys.stdout.flush()
-                   # sys.stdout.write(" ")  
-                    sys.stdout.flush()
+            # rgs_tens= np.zeros((nchains, frames,3,3))
+            # for ii in range (frames):
+            #         g="Frame:%d"%(ii+1)
+            #         sys.stdout.write("\r" + str(g))
+            #         sys.stdout.flush()
+            #        # sys.stdout.write(" ")  
+            #         sys.stdout.flush()
 
-                    for j in range (nchains):
-                            ##g="Chain:%d"%(j+1)
-                            #sys.stdout.write("\r" + str(g))
-                            #sys.stdout.flush()
-                            temp_data=pos[ii,j*DP:(j+1)*DP]
-                            rgs_tens[j,ii]=rg_tens(temp_data)
-            #(rgs[0,500,0,0]**2+rgs[0,500,1,1]**2+rgs[0,500,2,2]**2)**0.5
-            radii=[]
-            radii_all=np.zeros((frames,nchains))
-            rg_tensor_eigen=np.zeros((frames,3))
-            for ii in range (frames):
-                tocalc=np.diag(rgs_tens[:,ii][0][0:3])
+            #         for j in range (nchains):
+            #                 ##g="Chain:%d"%(j+1)
+            #                 #sys.stdout.write("\r" + str(g))
+            #                 #sys.stdout.flush()
+            #                 temp_data=pos[ii,j*DP:(j+1)*DP]
+            #                 rgs_tens[j,ii]=rg_tens(temp_data)
+            # #(rgs[0,500,0,0]**2+rgs[0,500,1,1]**2+rgs[0,500,2,2]**2)**0.5
+            # radii=[]
+            # radii_all=np.zeros((frames,nchains))
+            # rg_tensor_eigen=np.zeros((frames,3))
+            # for ii in range (frames):
+            #     tocalc=np.diag(rgs_tens[:,ii][0][0:3])
 
-                tocalc=tocalc[tocalc.argsort()]
-                temp_rg=0
-                temp_rs=[]
-                temp_eigen=np.array([0,0,0])
-                for j in range (0,nchains):
-                    temp=(tocalc[0])+(tocalc[1])+(tocalc[2])
-                    temp_rg+=temp
-                    temp_eigen=temp_eigen+tocalc
-                    radii_all[ii,j]=temp**0.5
-                radii.append(temp_rg**0.5)
-                rg_tensor_eigen[ii]=temp_eigen
-            #print("\n Radii")
-            #print(radii)
-            if j==0:
-                j=1
-            radii=np.asarray(radii)/j
-            rg_tensor_eigen=rg_tensor_eigen/j
-            #temp_eigen=temp_eigen/j
-            print('Radii Shape:',radii.shape)
-            print('rg tensor shape',rg_tensor_eigen.shape)
-            np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
-            np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d_lambda_%d.dat'%(run_count,i),(np.column_stack([time[:],rg_tensor_eigen])))
+            #     tocalc=tocalc[tocalc.argsort()]
+            #     temp_rg=0
+            #     temp_rs=[]
+            #     temp_eigen=np.array([0,0,0])
+            #     for j in range (0,nchains):
+            #         temp=(tocalc[0])+(tocalc[1])+(tocalc[2])
+            #         temp_rg+=temp
+            #         temp_eigen=temp_eigen+tocalc
+            #         radii_all[ii,j]=temp**0.5
+            #     radii.append(temp_rg**0.5)
+            #     rg_tensor_eigen[ii]=temp_eigen
+            # #print("\n Radii")
+            # #print(radii)
+            # if j==0:
+            #     j=1
+            # radii=np.asarray(radii)/j
+            # rg_tensor_eigen=rg_tensor_eigen/j
+            # #temp_eigen=temp_eigen/j
+            # print('Radii Shape:',radii.shape)
+            # print('rg tensor shape',rg_tensor_eigen.shape)
+            # np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
+            # np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d_lambda_%d.dat'%(run_count,i),(np.column_stack([time[:],rg_tensor_eigen])))
 
             ### Internal Distances #####
-            msid_dist=np.zeros((np.arange(0,int(DP/2).size),frames+1))
+            #DP=pos.shape[1]
+            if d=='total':
+                start=0
+                stop=DP
+            elif d=='active':
+                start=0
+                stop=int(DP*how_many)
+            elif d=='passive':
+                start=0
+                stop=int(DP*(1-how_many))
+            msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
             for ii in range (frames):
-                msid_dist[:,0],msid_dist[:,ii]=compute_msid(pos[:,ii], 0, int(DP/2), nch, DP)
-            msid_dist[:,-1]=np.mean(msid[:,1:-1],axis=1)
-            np.savetxt(msid_dir+'/'+d+'msids_RUN_%d_lambda_%d.dat'%(run_count,i))
+                msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, DP)
+            msid_dist[:-1,-1]=np.mean(msid_dist[:-1,1:-1],axis=1)
+            np.savetxt(msid_dir+'/'+d+'msids_RUN_%d_lambda_%d.dat'%(run_count,i),msid_dist[:-1,:])
             run_count+=1
-        f.close()
+            f.close()
 
 
 
