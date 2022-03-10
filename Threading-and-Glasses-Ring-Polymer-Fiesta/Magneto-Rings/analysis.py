@@ -240,107 +240,110 @@ for d in part_dict:
 
             frames=count_frames
             mean_pos=pos.mean(axis=1).reshape(-1, 1, 3)
-            # #pos-=mean_pos
-            # end=timer()
-            # print('Wall Time:',end-start)
-            # time = np.zeros(frames)
-            # count=0
-            # for tt in range(frames):
-            #     time[tt]=count*run_steps
-            #     count+=1
-            # msds = np.zeros((npart, frames))
-            # #print(msds.shape)
-            # for ii in range(pos.shape[1]):
-            #     start=timer()
-            #     msds[ii] = self_fft(pos[:,ii])
-            #     end=timer()
-            #     g="Particle %d Wall time %.4f seconds"%(ii, end-start)
-            # #     sys.stdout.write("\r" + str(g))
-            # #     sys.stdout.write('\n')
-            # #     sys.stdout.flush()
-            # # #       np.savetxt('./'+file[:-4]+'_g1_all.dat',(np.stack((msds),axis=-1)))
-            # np.savetxt(directory+'/'+d+'_g1_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],msds.mean(axis=0)[:]),axis=-1)))
-            # nch=int(nchains)
-            # #pos+=mean_pos
-            # pos_coms=np.zeros((frames,nch,3))
-            # pos_coms=coms_times(pos,pos_coms,Dpol,nch,frames)
-            # np.savetxt('pos_coms.txt',pos_coms[:,0])
-            # print('Shape POS',pos_coms.shape) 
-            # #pos=np.zeros((len(files),npart,3))
-            # g3s = np.zeros((nch,frames))
-            # for ii in range(pos_coms.shape[1]):
-            #     start=timer()
-            #     g3s[ii] = self_fft(pos_coms[:,ii])
-            #     end=timer()
-            # #     g="Chain %d Wall time %.4f seconds"%(ii, end-start)
-            # #     sys.stdout.write("\r" + str(g))
-            # #     sys.stdout.write('\n')
-            # #     sys.stdout.flush()
-            # # #print("================= COMs g3 =================")
-            # print('G3 shape',g3s[0].shape)
-            # print('time shape',time.shape)
-            # np.savetxt(directory+'/'+d+'_g3_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],g3s[0]),axis=-1)))
+            #pos-=mean_pos
+            end=timer()
+            print('Wall Time:',end-start)
+            time = np.zeros(frames)
+            count=0
+            for tt in range(frames):
+                time[tt]=count*run_steps
+                count+=1
+            msds = np.zeros((npart, frames))
+            #print(msds.shape)
+            for ii in range(pos.shape[1]):
+                start=timer()
+                msds[ii] = self_fft(pos[:,ii])
+                end=timer()
+                g="Particle %d Wall time %.4f seconds"%(ii, end-start)
+            #     sys.stdout.write("\r" + str(g))
+            #     sys.stdout.write('\n')
+            #     sys.stdout.flush()
+            # #       np.savetxt('./'+file[:-4]+'_g1_all.dat',(np.stack((msds),axis=-1)))
+            np.savetxt(directory+'/'+d+'_g1_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],msds.mean(axis=0)[:]),axis=-1)))
+            nch=int(nchains)
+            #pos+=mean_pos
+            pos_coms=np.zeros((frames,nch,3))
+            pos_coms=coms_times(pos,pos_coms,Dpol,nch,frames)
+            np.savetxt('pos_coms.txt',pos_coms[:,0])
+            print('Shape POS',pos_coms.shape) 
+            #pos=np.zeros((len(files),npart,3))
+            g3s = np.zeros((nch,frames))
+            for ii in range(pos_coms.shape[1]):
+                start=timer()
+                g3s[ii] = self_fft(pos_coms[:,ii])
+                end=timer()
+            #     g="Chain %d Wall time %.4f seconds"%(ii, end-start)
+            #     sys.stdout.write("\r" + str(g))
+            #     sys.stdout.write('\n')
+            #     sys.stdout.flush()
+            # #print("================= COMs g3 =================")
+            print('G3 shape',g3s[0].shape)
+            print('time shape',time.shape)
+            np.savetxt(directory+'/'+d+'_g3_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],g3s[0]),axis=-1)))
             
 
 
-            # rgs_tens= np.zeros((nchains, frames,3,3))
-            # for ii in range (frames):
-            #         g="Frame:%d"%(ii+1)
-            #         sys.stdout.write("\r" + str(g))
-            #         sys.stdout.flush()
-            #        # sys.stdout.write(" ")  
-            #         sys.stdout.flush()
+            rgs_tens= np.zeros((nchains, frames,3,3))
+            for ii in range (frames):
+                    g="Frame:%d"%(ii+1)
+                    sys.stdout.write("\r" + str(g))
+                    sys.stdout.flush()
+                   # sys.stdout.write(" ")  
+                    sys.stdout.flush()
 
-            #         for j in range (nchains):
-            #                 ##g="Chain:%d"%(j+1)
-            #                 #sys.stdout.write("\r" + str(g))
-            #                 #sys.stdout.flush()
-            #                 temp_data=pos[ii,j*DP:(j+1)*DP]
-            #                 rgs_tens[j,ii]=rg_tens(temp_data)
-            # #(rgs[0,500,0,0]**2+rgs[0,500,1,1]**2+rgs[0,500,2,2]**2)**0.5
-            # radii=[]
-            # radii_all=np.zeros((frames,nchains))
-            # rg_tensor_eigen=np.zeros((frames,3))
-            # for ii in range (frames):
-            #     tocalc=np.diag(rgs_tens[:,ii][0][0:3])
+                    for j in range (nchains):
+                            ##g="Chain:%d"%(j+1)
+                            #sys.stdout.write("\r" + str(g))
+                            #sys.stdout.flush()
+                            temp_data=pos[ii,j*DP:(j+1)*DP]
+                            rgs_tens[j,ii]=rg_tens(temp_data)
+            #(rgs[0,500,0,0]**2+rgs[0,500,1,1]**2+rgs[0,500,2,2]**2)**0.5
+            radii=[]
+            radii_all=np.zeros((frames,nchains))
+            rg_tensor_eigen=np.zeros((frames,3))
+            for ii in range (frames):
+                tocalc=np.diag(rgs_tens[:,ii][0][0:3])
 
-            #     tocalc=tocalc[tocalc.argsort()]
-            #     temp_rg=0
-            #     temp_rs=[]
-            #     temp_eigen=np.array([0,0,0])
-            #     for j in range (0,nchains):
-            #         temp=(tocalc[0])+(tocalc[1])+(tocalc[2])
-            #         temp_rg+=temp
-            #         temp_eigen=temp_eigen+tocalc
-            #         radii_all[ii,j]=temp**0.5
-            #     radii.append(temp_rg**0.5)
-            #     rg_tensor_eigen[ii]=temp_eigen
-            # #print("\n Radii")
-            # #print(radii)
-            # if j==0:
-            #     j=1
-            # radii=np.asarray(radii)/j
-            # rg_tensor_eigen=rg_tensor_eigen/j
-            # #temp_eigen=temp_eigen/j
-            # print('Radii Shape:',radii.shape)
-            # print('rg tensor shape',rg_tensor_eigen.shape)
-            # np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
-            # np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d_lambda_%d.dat'%(run_count,i),(np.column_stack([time[:],rg_tensor_eigen])))
+                tocalc=tocalc[tocalc.argsort()]
+                temp_rg=0
+                temp_rs=[]
+                temp_eigen=np.array([0,0,0])
+                for j in range (0,nchains):
+                    temp=(tocalc[0])+(tocalc[1])+(tocalc[2])
+                    temp_rg+=temp
+                    temp_eigen=temp_eigen+tocalc
+                    radii_all[ii,j]=temp**0.5
+                radii.append(temp_rg**0.5)
+                rg_tensor_eigen[ii]=temp_eigen
+            #print("\n Radii")
+            #print(radii)
+            if j==0:
+                j=1
+            radii=np.asarray(radii)/j
+            rg_tensor_eigen=rg_tensor_eigen/j
+            #temp_eigen=temp_eigen/j
+            print('Radii Shape:',radii.shape)
+            print('rg tensor shape',rg_tensor_eigen.shape)
+            np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
+            np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d_lambda_%d.dat'%(run_count,i),(np.column_stack([time[:],rg_tensor_eigen])))
 
             ### Internal Distances #####
             #DP=pos.shape[1]
             if d=='total':
                 start=0
-                stop=DP
+                stop=int(DP/2)
+                eff_DP=DP
             elif d=='active':
                 start=0
                 stop=int(DP*how_many)
+                eff_DP=int(DP/2)
             elif d=='passive':
                 start=0
                 stop=int(DP*(1-how_many))
+                eff_DP=int(DP/2)
             msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
             for ii in range (frames):
-                msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, DP)
+                msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, eff_DP)
             msid_dist[:-1,-1]=np.mean(msid_dist[:-1,1:-1],axis=1)
             np.savetxt(msid_dir+'/'+d+'msids_RUN_%d_lambda_%d.dat'%(run_count,i),msid_dist[:-1,:])
             run_count+=1

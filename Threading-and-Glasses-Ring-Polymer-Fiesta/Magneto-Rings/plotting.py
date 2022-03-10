@@ -6,6 +6,7 @@ import time
 from matplotlib.ticker import FuncFormatter
 import glob
 import matplotlib.pylab as pl
+import sys
 ### My plotting style is inputted here #####
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 400
@@ -31,7 +32,7 @@ plt.rcParams['ytick.major.pad']='8'
 biden_color='#2986cc'
 trump_color='#cc0000'
 
-
+os.chdir(sys.argv[1])
 directory='plots'
 import os
 if not os.path.exists(directory):

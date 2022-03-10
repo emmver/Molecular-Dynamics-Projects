@@ -25,6 +25,14 @@ import seaborn as sns
 os.chdir(sys.argv[1])
 #################### My Functions #######################################
 bws=list()
+def fred_diac(data_interp_rg):
+    rgs=data_interp_rg
+    rgs=np.asarray(rgs)
+    rg_iqr=iqr(rgs)#;print(rg_iqr)
+    bw=2*rg_iqr/rgs.size**(1/3)#;print(bw)
+    nbins=(rgs.max()-rgs.min())/bw#
+    return nbins
+
 def kde_scipy(x, x_grid,bw_idx,**kwargs):
     """Kernel Density Estimation with Scipy"""
     # Note that scipy weights its bandwidth by the covariance of the
@@ -66,6 +74,7 @@ def plot_corr_rg(key,xmin,xmax):
     data_interp=np.zeros(x.shape)
     for file in files: 
         data=np.genfromtxt(file)
+        data=data[1:,:]
         data[:,0]-=data[0,0]
         data_interp+=np.interp(x,data[:,0],data[:,1])
         plt.plot(data[:,0],data[:,1],color=colors[idx-1],marker='o',markersize=6,linestyle='none',label='RUN %d'%idx)
@@ -75,7 +84,7 @@ def plot_corr_rg(key,xmin,xmax):
         plt.tick_params(axis='x', which='minor')
         idx+=1
     plt.plot(x[start_from:],data_interp[start_from:]/(idx-1),color='r',lw=3)
-    plt.xlim(500,5e6)
+    #plt.xlim(500,5e6)
     plt.legend(frameon=False,loc=(1.0,0.0))
     plt.savefig(to_store+'/'+key+'.jpg',dpi=300,bbox_inches='tight')
     np.savetxt(to_store+'/average_%s.avg'%key,np.stack((x[:],data_interp[:]/(idx-1)),axis=-1))
@@ -94,6 +103,7 @@ def plot_eigen(xmin,xmax,rgsq):
         for file in files: 
             #print(file)
             data=np.genfromtxt(file)
+            data=data[1:,:]
             data[:,0]-=data[0,0]
             data_interp+=np.interp(x,data[:,0],data[:,i])
             plt.plot(data[:,0],data[:,i],color=colors[idx-1],marker='o',markersize=6,linestyle='none',label='RUN %d'%idx)
@@ -106,7 +116,7 @@ def plot_eigen(xmin,xmax,rgsq):
         plot_avg[:,i-1]=data_interp/(idx-1)
         plt.plot(x[start_from:],data_interp[start_from:]/(idx-1),color='r',lw=3)
         plt.legend(frameon=False,loc=(1.0,0.0))
-        plt.xlim(500,5e6)
+        #plt.xlim(500,5e6)
         plt.savefig('./timeseries/lambda_%d.jpg'%i,dpi=300,bbox_inches='tight')
         np.savetxt('./timeseries/lambda_%d_average.avg'%i,np.stack((x[:],data_interp[:]/(idx-1)),axis=-1))
         #plt.show()
@@ -134,42 +144,44 @@ def rg_dist(xmin,xmax):
         data_rg=np.genfromtxt(file)
         data_rg[:,0]-=data_rg[0,0]
         data_interp_rg+=np.interp(x,data_rg[:,0],data_rg[:,1])
-        rgs=data_rg[:,1]
-        rgs=np.asarray(rgs)
-        rg_iqr=iqr(rgs)#;print(rg_iqr)
-        bw=2*rg_iqr/rgs.size**(1/3)#;print(bw)
-        nbins=(rgs.max()-rgs.min())/bw#
-        hist,bins=np.histogram(rgs,bins=int(nbins),density=True)
+        # rgs=data_rg[:,1]
+        # rgs=np.asarray(rgs)
+        # rg_iqr=iqr(rgs)#;print(rg_iqr)
+        # bw=2*rg_iqr/rgs.size**(1/3)#;print(bw)
+        # nbins=(rgs.max()-rgs.min())/bw#
+        # hist,bins=np.histogram(rgs,bins=int(nbins),density=True)
         idx+=1
-        plt.plot(bins[:-1],hist,drawstyle='steps')
-        plt.fill_between(bins[:-1],hist,step='pre',alpha=0.4)
+        # plt.plot(bins[:-1],hist,drawstyle='steps')
+        # plt.fill_between(bins[:-1],hist,step='pre',alpha=0.4)
     data_interp_rg=data_interp_rg/idx
-    rgs=data_interp_rg
-    rgs=np.asarray(rgs)
-    rg_iqr=iqr(rgs)#;print(rg_iqr)
-    bw=2*rg_iqr/rgs.size**(1/3)#;print(bw)
-    nbins=(rgs.max()-rgs.min())/bw#
-    hist,bins=np.histogram(data_interp_rg,bins=int(nbins),density=True)
-    print("Bins:",int(nbins))
-    plt.plot(bins[:-1],hist,drawstyle='steps')
-    plt.fill_between(bins[:-1],hist,step='pre',alpha=0.4)
-    plt.xlabel(r'$R_g [\sigma]$')
-    plt.ylabel(r'$P(R_g) $')
-    plt.savefig('./distributions/histograms_rg.jpg',dpi=300,bbox_inches='tight')
+    # rgs=data_interp_rg
+    # rgs=np.asarray(rgs);print (rgs)
+    # rg_iqr=iqr(rgs);print(rg_iqr)
+    # bw=2*rg_iqr/rgs.size**(1/3);print(bw)
+    # nbins=(rgs.max()-rgs.min())/bw#
+    # hist,bins=np.histogram(data_interp_rg,bins=int(nbins),density=True)
+    # print("Bins:",int(nbins))
+    # plt.plot(bins[:-1],hist,drawstyle='steps')
+    # plt.fill_between(bins[:-1],hist,step='pre',alpha=0.4)
+    # plt.xlabel(r'$R_g [\sigma]$')
+    # plt.ylabel(r'$P(R_g) $')
+    # plt.savefig('./distributions/histograms_rg.jpg',dpi=300,bbox_inches='tight')
     plt.clf()
-    x_grid = np.linspace(rgs.min()-0.1*rgs.min(), rgs.max()+0.1*rgs.max(), 100)
-    pdf=kde_scipy(data_interp_rg,x_grid,bw_idx)
-    print('Area:',np.trapz(pdf,x=x_grid))
-    mean=np.trapz(x_grid*pdf,x=x_grid); print('Mean Rg:',mean)
-    std=np.sqrt(np.trapz((x_grid-mean)**2*pdf,x=x_grid)); print('Standard deviation:',std)
-    plt.plot(x_grid,pdf)
-    plt.fill_between(x_grid,pdf,alpha=0.4)
-    gauss=(1/(std*np.sqrt(2*np.pi)))*np.exp(-0.5*(((x_grid-mean)/std)**2));print(gauss.max())
-    plt.plot(x_grid,gauss,'k--')
+    nbins=fred_diac(data_interp_rg)
+    hist,bins=np.histogram(data_interp_rg,bins=int(nbins),density=True)
+    #x_grid = np.linspace(rgs.min()-0.1*rgs.min(), rgs.max()+0.1*rgs.max(), 100)
+    #pdf=kde_scipy(data_interp_rg,x_grid,bw_idx)
+    print('Area:',np.trapz(hist,x=bins[:-1]))
+    mean=np.trapz(bins[:-1]*hist,x=bins[:-1]); print('Mean Rg:',mean)
+    std=np.sqrt(np.trapz((bins[:-1]-mean)**2*hist,x=bins[:-1])); print('Standard deviation:',std)
+    plt.plot(bins[:-1],hist)
+    plt.fill_between(bins[:-1],hist,alpha=0.4)
+    gauss=(1/(std*np.sqrt(2*np.pi)))*np.exp(-0.5*(((bins[:-1]-mean)/std)**2));print(gauss.max())
+    plt.plot(bins[:-1],gauss,'k--')
     plt.ylabel(r'$P(R_g) $')
     plt.xlabel(r'$R_g [\sigma]$')
     plt.savefig('./distributions/kde_rg.jpg',dpi=300,bbox_inches='tight')
-    np.savetxt('./distributions/avg_kde_rg.avg',np.stack((x_grid,pdf),axis=-1))
+    np.savetxt('./distributions/avg_kde_rg.avg',np.stack((bins[:-1],hist),axis=-1))
     plt.clf()
     return mean**2
 
@@ -181,19 +193,17 @@ def eigen_dist(rgsq):
         print(file)
         data_interp_rg=np.genfromtxt(file)[:,1]/rgsq
         #print(data_interp_rg)
-        rgs=data_interp_rg
-        rgs=np.asarray(rgs)
-        rg_iqr=iqr(rgs)#;print(rg_iqr)
-        bw=2*rg_iqr/rgs.size**(1/3)#;print(bw)
-        nbins=(rgs.max()-rgs.min())/bw#
+        nbins=fred_diac(data_interp_rg)
         hist,bins=np.histogram(data_interp_rg,bins=int(nbins),density=True)
         print("Bins:",int(nbins))
-        x_grid = np.linspace(rgs.min()-0.1*rgs.min(), rgs.max()+0.1*rgs.max(), 100)
-        pdf=kde_scipy(data_interp_rg,x_grid,idx)
+        # x_grid = np.linspace(rgs.min()-0.1*rgs.min(), rgs.max()+0.1*rgs.max(), 100)
+        # pdf=kde_scipy(data_interp_rg,x_grid,idx)
+        x_grid=bins[:-1]
+        pdf=hist
         print('Area:',np.trapz(pdf,x=x_grid))
         mean=np.trapz(x_grid*pdf,x=x_grid); print('Mean Rg:',mean)
         std=np.sqrt(np.trapz((x_grid-mean)**2*pdf,x=x_grid)); print('Standard deviation:',std)
-        plt.plot(x_grid,pdf,label=r'$lambda_%d$'%idx,color=colors[idx-1])
+        plt.plot(x_grid,pdf,label=r'$\lambda_%d$'%idx,color=colors[idx-1])
         plt.fill_between(x_grid,pdf,alpha=0.4,color=colors[idx-1])
         np.savetxt('./distributions/avg_kde_lambda_%d.avg'%idx,np.stack((x_grid,pdf),axis=-1))
         idx+=1
@@ -239,6 +249,7 @@ def eigen_dist(rgsq):
 
 
 def shape_avg(files,rgfile):
+    colorscheme='magma'
     lambda_1=np.genfromtxt(files[0])
     time=lambda_1[:,0]
     lambda_1=lambda_1[:,1]
@@ -266,14 +277,31 @@ def shape_avg(files,rgfile):
     plt.clf()
     np.savetxt('./timeseries/prolateness.avg',np.stack((time,prolat),axis=-1))
     rgs=np.genfromtxt(rgfile[0])[:,1]
-    # print(rgs.shape);print(prolat.shape)
-    # sns.kdeplot(x=rgs, y=prolat, cmap="Reds", shade=False, bw_adjust=np.array(bws).mean(),thresh=0)
-    # #plt.xlabel()
-    # #plt.ylabel(r)
-    plt.hist2d(rgs,prolat,bins=50,density=True,cmap='jet')
+    nbins=np.array([fred_diac(rgs),fred_diac(prolat)])
+    plt.hist2d(rgs,prolat,bins=int(nbins.max()),density=True,cmap=colorscheme)
     plt.colorbar()
+    plt.xlabel(r'$R_g [\sigma]$')
+    plt.ylabel('S*')
+    #plt.ylim(-0.25,2)
+    #plt.xlim(5,10)
     plt.savefig('./2d_distributions/prolat_rg.jpg',dpi=300,bbox_inches='tight')
-    plt.show()
+    #plt.show()
+    plt.clf()
+    x=rgs
+    y=prolat
+    nbins=300
+    k = gaussian_kde([x,y])
+    xi, yi = np.mgrid[x.min():x.max():nbins*1j, y.min():y.max():nbins*1j]
+    zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+    c=plt.pcolormesh(xi, yi, zi.reshape(xi.shape), shading='auto',cmap=colorscheme)
+    plt.colorbar(c)
+    plt.xlabel(r'$R_g [\sigma]$')
+    plt.ylabel('S*')
+    #plt.ylim(-0.25,2)
+    #plt.xlim(5,10)
+    #plt.axis([rgs.min()-0.1*rgs.min(), rgs.max()+0.1*rgs.max(), -0.25, 2])
+    plt.savefig('./2d_distributions/prolat_rg_kde.jpg',dpi=300,bbox_inches='tight')
+    plt.clf()
 
     #prob_2D(rgs,prolat,r'$R_g [\sigma]$',r'S*','./2d_distributions/prolat_rg.jpg')
 
@@ -309,7 +337,7 @@ for nam in dir_names:
  
 
 xmin=0
-xmax=4e6
+xmax=3e7
 plot_corr_rg('tsa',xmin,xmax)
 plot_corr_rg('rg',xmin,xmax)
 print('Done with gyration timeseries and correlation')
