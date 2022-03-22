@@ -246,12 +246,13 @@ def eigen_dist(files_rg,rgsq,store_name):
 
 def shape_avg(files,rgfile,store_name,store_name_2):
     colorscheme='magma'
+    skip=1000
     print(files)
     lambda_1=np.genfromtxt(files[0]) ### Larger of eigenvalues
-    time=lambda_1[:,0]
-    lambda_1=lambda_1[:,1]
-    lambda_2=np.genfromtxt(files[1])[:,1]
-    lambda_3=np.genfromtxt(files[2])[:,1]###Smaller of eigenvalues
+    time=lambda_1[skip:,0]
+    lambda_1=lambda_1[skip:,1]
+    lambda_2=np.genfromtxt(files[1])[skip:,1]
+    lambda_3=np.genfromtxt(files[2])[skip:,1]###Smaller of eigenvalues
     ### Invariants ######
     i_1=lambda_1+lambda_2+lambda_3
     i_2=lambda_1*lambda_2+lambda_2*lambda_3+lambda_3*lambda_1
@@ -273,12 +274,12 @@ def shape_avg(files,rgfile,store_name,store_name_2):
     plt.savefig(store_name+'prolateness.jpg',dpi=300,bbox_inches='tight')
     plt.clf()
     np.savetxt(store_name+'prolateness.avg',np.stack((time,prolat),axis=-1))
-    rgs=np.genfromtxt(rgfile[0])[:,1]
+    rgs=np.genfromtxt(rgfile[0])[skip:,1]
     # print(rgs.shape);print(prolat.shape)
     # sns.kdeplot(x=rgs, y=prolat, cmap="Reds", shade=False, bw_adjust=np.array(bws).mean(),thresh=0)
     # #plt.xlabel()
     # #plt.ylabel(r)
-    xmin,xmax,ymin,ymax=5,20,-0.25,0.6
+    xmin,xmax,ymin,ymax=0,20,-0.25,0.6
     nbins=np.array([fred_diac(rgs),fred_diac(prolat)])
     print('2D bins:',nbins.max())
     plt.hist2d(rgs,prolat,bins=int(nbins.max()),density=True,cmap=colorscheme,range=[[xmin,xmax],[ymin,ymax]])
@@ -365,7 +366,7 @@ for i in lambdas:
     plot_eigen(files,xmin,xmax,rgsq,store_name)
     print('Done with eigen values timeseries')
     files=glob.glob('./timeseries/lambda_%d*.avg'%i)
-    store_name='./distributions/'
+    store_name='./distributions/lambda_%d_eigen_dist'%i
     eigen_dist(files,rgsq,store_name)
     print('Done with eigen values distribution')
     files=glob.glob('./timeseries/lambda_%d*.avg'%i)

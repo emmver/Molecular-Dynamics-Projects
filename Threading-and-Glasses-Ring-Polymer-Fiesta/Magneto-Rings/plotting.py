@@ -87,11 +87,12 @@ for d in part_dict:
             plt.title(d)
             plt.xlabel(r'Time [$\tau_0$]')
             plt.ylabel('$g^1 (t)/N [\sigma^2]$')
-            plt.savefig(directory+'/'+'g1_lambda_dep_%s.png'%d,dpi=300,bbox_inches='tight')
-
             count+=1
-        #plt.show()
+        plt.savefig(directory+'/'+'g1_lambda_dep_%s.png'%d,dpi=300,bbox_inches='tight')
         plt.clf()
+            #count+=1
+        #plt.show()
+        #plt.clf()
         count_ind+=1
 ## g1 avg total/passive/active
 lambdas=np.arange(4)+1
@@ -109,9 +110,10 @@ for i in lambdas:
             plt.title(r'$\lambda=%d$'%i)
             plt.xlabel(r'Time [$\tau_0$]')
             plt.ylabel('$g^1 (t)/N [\sigma^2]$')
-            plt.savefig(directory+'/'+'g1_three_species_%d.png'%i,dpi=300,bbox_inches='tight')
-
             count+=1
+    plt.savefig(directory+'/'+'g1_three_species_%d.png'%i,dpi=300,bbox_inches='tight')
+
+            #count+=1
     plt.clf()
     
 for d in part_dict:
@@ -163,9 +165,11 @@ for d in part_dict:
             plt.title(d)
             plt.xlabel(r'Time [$\tau_0$]')
             plt.ylabel('$g^1 (t)/N [\sigma^2]$')
-            plt.savefig(directory+'/'+'g3_lambda_dep_%s.png'%d,dpi=300,bbox_inches='tight')
-
             count+=1
+        plt.savefig(directory+'/'+'g3_lambda_dep_%s.png'%d,dpi=300,bbox_inches='tight')
+        plt.clf()
+
+            #count+=1
  #       plt.show()
         count_ind+=1
 ## g3 avg total/passive/active
@@ -185,9 +189,10 @@ for i in lambdas:
             plt.title(r'$\lambda=%d$'%i)
             plt.xlabel(r'Time [$\tau_0$]')
             plt.ylabel('$g^1 (t)/N [\sigma^2]$')
-            plt.savefig(directory+'/'+'g3_three_species_%d.png'%i,dpi=300,bbox_inches='tight')
-
             count+=1
+    plt.savefig(directory+'/'+'g3_three_species_%d.png'%i,dpi=300,bbox_inches='tight')
+
+            #count+=1
 #    plt.show()
     plt.clf()    
 

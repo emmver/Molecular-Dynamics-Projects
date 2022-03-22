@@ -171,7 +171,7 @@ if not os.path.exists(msid_dir):
     os.makedirs(msid_dir)
 
 frames_in=10000
-skipframes=2000
+skipframes=3000
 run_steps=10000
 nchains=1
 nch=nchains
@@ -320,13 +320,7 @@ for d in part_dict:
             if j==0:
                 j=1
             radii=np.asarray(radii)/j
-            rg_tensor_eigen=rg_tensor_eigen/j
-            #temp_eigen=temp_eigen/j
-            print('Radii Shape:',radii.shape)
-            print('rg tensor shape',rg_tensor_eigen.shape)
-            np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
-            np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d_lambda_%d.dat'%(run_count,i),(np.column_stack([time[:],rg_tensor_eigen])))
-
+            
             ### Internal Distances #####
             #DP=pos.shape[1]
             if d=='total':
