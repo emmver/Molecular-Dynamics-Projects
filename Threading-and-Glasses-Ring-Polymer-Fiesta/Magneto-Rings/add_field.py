@@ -221,7 +221,7 @@ dummy=np.random.randn(3)
 H_dipm = 1
 H_field = H_dipm*(dummy/np.linalg.norm(dummy))
 ##############################################################
-#      Magnetics on                                          #
+#      Restart from lst frame of magnetic snapshot                                         #
 ##############################################################
 
 
@@ -243,7 +243,6 @@ print("=================== =================== =====================")
 print("Particles:",system.part[:].pos[:,0].size)
 print("=================== =================== =====================")
 
-DP=10
 print("#### Temp Test ######")
 
 print("Temperatures=\n {}".format(system.part[:].temp))
@@ -258,43 +257,29 @@ print("Non-Bonded:\n {}".format(system.non_bonded_inter[0,1].wca.get_params()))
 print("=================== =================== =====================")
 
 
-print("#### Non Bonded Test 0,0 ######")
-print("Non-Bonded:\n {}".format(system.non_bonded_inter[0,0].wca.get_params()))
-print("#### Non Bonded Test 1,1 ######")
-print("Non-Bonded:\n {}".format(system.non_bonded_inter[1,1].wca.get_params()))
-print("#### Non Bonded Test 0,1 ######")
-print("Non-Bonded:\n {}".format(system.non_bonded_inter[0,1].wca.get_params()))
-print("=================== =================== =====================")
-system.non_bonded_inter[0,0].wca.get_params()
 print("\n### system.thermostat test ###")
 print("system.thermostat.get_state() = {}".format(system.thermostat.get_state()))
 
-
-
-outfile = open('polymer_magnetic.vtf', 'w')
-
-dip_howmany=0.5
-print("number of magnetic particles:",int(system.part[:].pos[:,0].size*dip_howmany))
-dip_moment=float(sys.argv[2])
-npart=system.part[:].pos[:,0].size
-###### Adding dipole moments ####################
-add_activity(system.part[:].pos[:,0].size,DP,'block',dip_howmany,dip_moment)
 print("\n### system.dip test ###")
 print("system.part[:].dip = {}".format(system.part[:].dip))
+
+
+outfile = open('polymer_dipoled_field.vtf', 'w')
+
 
 p3m = magnetostatics.DipolarP3M(prefactor=1,accuracy=1.2e-3)
 
 system.actors.add(p3m)
 
 print("DONE!")
-tostore_vtk="vtk_warmup"
+tostore_vtk="vtk_warmup_field"
 vtk_idx=0
 if os.path.isdir(tostore_vtk):
     pass 
 else:
     os.mkdir(tostore_vtk)
 
-tostore_plots='magnetic_plots'
+tostore_plots='magnetic_plots_field'
 if os.path.isdir(tostore_plots):
     pass 
 else:
@@ -302,9 +287,9 @@ else:
 #############################################################
 #      Check params                                               #
 #############################################################
-log = open("myprog_magnetics_warmup.log", "w")
+log = open("myprog_magnetics_field_warmup.log", "w")
 sys.stdout = log
-print("Start Warmup after magnetics",flush=True)
+print("Start Warmup after magnetics equil - Now applying field",flush=True)
 print("================ ============== ===================",flush=True)
 warm_steps = 10
 i = 0
@@ -331,68 +316,69 @@ f=open ("vectors_h_file.txt","w");
 f.write("\n\n")
 f.write("VECTORS vectors float")
 f.write("\n\n")
-f.close()
-for t in range (1000):
-    energy=system.analysis.energy()
-    print("--------------------- Energies --------------------------",flush=True)
-    print(energy)
-    print("Timestep is: ",system.time_step)
-    vtf.writevcf(system, outfile)
-    system.part.writevtk("./dummy.vtk");
-    write_to_vtk(vtk_idx);vtk_idx+=1
-    system.integrator.run(warm_steps)
-    count_steps+=1
-    store_all_lists()
+# f.close()
+# for t in range (1000):
+#     energy=system.analysis.energy()
+#     print("--------------------- Energies --------------------------",flush=True)
+#     print(energy)
+#     print("Timestep is: ",system.time_step)
+#     vtf.writevcf(system, outfile)
+#     system.part.writevtk("./dummy.vtk");
+#     write_to_vtk(vtk_idx);vtk_idx+=1
+#     system.integrator.run(warm_steps)
+#     count_steps+=1
+#     store_all_lists()
 
-   #z gamma=gamma*0.999995
-    count+=1
-    steps.append(count_steps*warm_steps)
-    total_en.append(energy['total']/npart)
-    plot_energies('total',total_en,key_2)
-    kin_en.append(energy['kinetic']/(1.5*npart))
-    plot_energies('kinetic',kin_en,key_2)
-    dipolar_en.append(energy['dipolar']/npart)
-    plot_energies('dipolar',dipolar_en,key_2)
-    pair_en.append(energy['non_bonded']/npart)
-    plot_energies('non-bonded',pair_en,key_2)
-    bond_en.append(energy['bonded']/npart)
-    plot_energies('bonded',bond_en,key_2)
-    vel=np.linalg.norm(passive.v,axis=1)
-    kinetic_passive=(2/3)*(0.5*passive.mass*vel**2)
-    ken_0.append(kinetic_passive.mean())
-    plot_energies('T_0',ken_0,key_2)
-    vel=np.linalg.norm(active.v,axis=1)
-    kinetic_active=(2/3)*(0.5*active.mass*vel**2)
-    ken_1.append(kinetic_active.mean())
-    plot_energies('T_1',ken_1,key_2)
+#    #z gamma=gamma*0.999995
+#     count+=1
+#     steps.append(count_steps*warm_steps)
+#     total_en.append(energy['total']/npart)
+#     plot_energies('total',total_en,key_2)
+#     kin_en.append(energy['kinetic']/(1.5*npart))
+#     plot_energies('kinetic',kin_en,key_2)
+#     dipolar_en.append(energy['dipolar']/npart)
+#     plot_energies('dipolar',dipolar_en,key_2)
+#     pair_en.append(energy['non_bonded']/npart)
+#     plot_energies('non-bonded',pair_en,key_2)
+#     bond_en.append(energy['bonded']/npart)
+#     plot_energies('bonded',bond_en,key_2)
+#     vel=np.linalg.norm(passive.v,axis=1)
+#     kinetic_passive=(2/3)*(0.5*passive.mass*vel**2)
+#     ken_0.append(kinetic_passive.mean())
+#     plot_energies('T_0',ken_0,key_2)
+#     vel=np.linalg.norm(active.v,axis=1)
+#     kinetic_active=(2/3)*(0.5*active.mass*vel**2)
+#     ken_1.append(kinetic_active.mean())
+#     plot_energies('T_1',ken_1,key_2)
 
-print("======= ======== =======")
-print("WARMUP DONE!!")
-store_all_lists()
+# print("======= ======== =======")
+# print("WARMUP DONE!!")
+# store_all_lists()
 
-angle_harmonic = interactions.AngleHarmonic(bend=1.0, phi0=2 * np.pi / 3)
-system.bonded_inter.add(angle_harmonic)
-nchains=int(system.part[:].pos[:,0].size/DP)
-monomers=DP
-for j in range (nchains):
-    for i in range(int(j*monomers),int((j+1)*monomers)-2):
-        id=i
-        system.part[id+1].add_bond((angle_harmonic,id,id+2))
-
-
-
-# restore simulation temperature
-system.thermostat.set_langevin(kT=1.0, gamma=1.0)
-system.integrator.run(warm_steps * 100)
-print("Finished warmup")
+# angle_harmonic = interactions.AngleHarmonic(bend=1.0, phi0=2 * np.pi / 3)
+# system.bonded_inter.add(angle_harmonic)
+# nchains=int(system.part[:].pos[:,0].size/DP)
+# monomers=DP
+# for j in range (nchains):
+#     for i in range(int(j*monomers),int((j+1)*monomers)-2):
+#         id=i
+#         system.part[id+1].add_bond((angle_harmonic,id,id+2))
 
 
 
+# # restore simulation temperature
+# system.thermostat.set_langevin(kT=1.0, gamma=1.0)
+# system.integrator.run(warm_steps * 100)
+# print("Finished warmup")
+
+
+H_constraint = espressomd.constraints.HomogeneousMagneticField(H=H_field)
+system.constraints.add(H_constraint)
 
 #############################################################
 #      Integration                                          #
 #############################################################
-log = open("myprog_magnetics_int.log", "w")
+log = open("myprog_magnetics_field_integrate.log", "w")
 sys.stdout = log
 system.integrator.set_vv() 
 key_2="magnetics_equil"
@@ -411,12 +397,12 @@ warm_steps=10000
 count,steps,count_steps,total_en,kin_en,dipolar_en,pair_en,bond_en,ken_0,ken_1,listoflists,string_lists=list_setup()
 
 ############################################################
-tostore_vtk="vtk_equil"                                     #
+tostore_vtk="vtk_equil_field_on"                            #
 if os.path.isdir(tostore_vtk):                              #
     pass                                                    #
 else:                                                       #
     os.mkdir(tostore_vtk)                                   #
-tostore_plots='magnetic_plots_equil'                        #
+tostore_plots='magnetic_plots_field_on_equil'               #
 if os.path.isdir(tostore_plots):                            #
     pass                                                    #
 else:                                                       #
