@@ -203,7 +203,7 @@ def store_all_lists():
         np.savetxt(tostore_plots+"/"+string_lists[i],listoflists[i])
 
 os.chdir(sys.argv[3])
-check_folder='../mycheck_passive'
+check_folder='../mycheck_magnetic'
 checks=glob.glob(check_folder+'/*')
 checks.sort(key=os.path.getmtime)
 print(checks)
@@ -213,13 +213,25 @@ print('Name:',name)
 print(name[2][0:4])
 last_idx=int(name[2][0:4])
 print("last idx:",last_idx)
+checkpoint.unregister('actors')
+checkpoint.unregister('magnetostatics')
 checkpoint.load(checkpoint_index=last_idx)
+print(checkpoint.get_registered_objects())
+
+p3m = magnetostatics.DipolarP3M(prefactor=1,accuracy=1.2e-3)
+
+system.actors.add(p3m)
+
 
 epsilon=1; sigma=1 #### Define WCA Params ####
 # magnetic field times dipole moment
 dummy=np.random.randn(3)
-H_dipm = 1
-H_field = H_dipm*(dummy/np.linalg.norm(dummy))
+if os.path.isfile('H.field')==True:
+    H_field=np.genfromtxt('H.field')
+else:
+    H_dipm = 1
+    H_field = H_dipm*(dummy/np.linalg.norm(dummy))
+    np.savetxt('H.field',H_field)
 ##############################################################
 #      Restart from lst frame of magnetic snapshot                                         #
 ##############################################################
@@ -262,14 +274,12 @@ print("system.thermostat.get_state() = {}".format(system.thermostat.get_state())
 
 print("\n### system.dip test ###")
 print("system.part[:].dip = {}".format(system.part[:].dip))
-
+print("#########FIELD#######")
+print(H_field)
 
 outfile = open('polymer_dipoled_field.vtf', 'w')
 
 
-p3m = magnetostatics.DipolarP3M(prefactor=1,accuracy=1.2e-3)
-
-system.actors.add(p3m)
 
 print("DONE!")
 tostore_vtk="vtk_warmup_field"
@@ -383,7 +393,7 @@ sys.stdout = log
 system.integrator.set_vv() 
 key_2="magnetics_equil"
 print("simulating...")
-check_path="mycheck_magnetic"
+check_path="mycheck_field_on"
 checkpoint=checkpointing.Checkpoint(checkpoint_id=check_path,checkpoint_path='.')
 checkpoint.register("system")
 t_steps = 10000 
