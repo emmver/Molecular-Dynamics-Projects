@@ -202,8 +202,17 @@ def store_all_lists():
     for i in range (len(listoflists)):
         np.savetxt(tostore_plots+"/"+string_lists[i],listoflists[i])
 
-os.chdir(sys.argv[3])
+
+def build_sys():
+
 check_folder='../mycheck_magnetic'
+checks=glob.glob(check_folder+'/*')
+checks.sort(key=os.path.getmtime)
+
+################################################################################################################################
+
+os.chdir(sys.argv[3])
+check_folder='../vtk_equil'
 checks=glob.glob(check_folder+'/*')
 checks.sort(key=os.path.getmtime)
 print(checks)
