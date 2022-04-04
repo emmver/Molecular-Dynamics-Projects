@@ -431,7 +431,7 @@ for t in range(t_steps):
     system.integrator.run(warm_steps)
     vtf.writevcf(system, outfile)
 
-    if t%store_step==0:
+    if t%1==0:
         system.part.writevtk("./dummy.vtk");
         write_to_vtk(vtk_idx);vtk_idx+=1
 

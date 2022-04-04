@@ -202,48 +202,134 @@ def store_all_lists():
     for i in range (len(listoflists)):
         np.savetxt(tostore_plots+"/"+string_lists[i],listoflists[i])
 
-
-def build_sys():
-
-check_folder='../mycheck_magnetic'
-checks=glob.glob(check_folder+'/*')
-checks.sort(key=os.path.getmtime)
-
-################################################################################################################################
-
-os.chdir(sys.argv[3])
+''' 
+For reading VTK: Total 612 lines 
+Positions: np.genfromtxt(filename, skip_header=5, skip_footer=407)
+Velocities: np.genfromtxt(filename, skip_header=209, skip_footer=204)
+Dipoles: np.genfromtxt(filename, skip_header=413)
+'''
+os.chdir(sys.argv[1])
+track=np.arange(990,1000)
+idx=np.random.randint(9)
+print(track[idx])
 check_folder='../vtk_equil'
-checks=glob.glob(check_folder+'/*')
-checks.sort(key=os.path.getmtime)
-print(checks)
-checkpoint=checkpointing.Checkpoint(checkpoint_id=sys.argv[1],checkpoint_path='..')
-name=checks[-1].split('/')
-print('Name:',name)
-print(name[2][0:4])
-last_idx=int(name[2][0:4])
-print("last idx:",last_idx)
-checkpoint.unregister('actors')
-checkpoint.unregister('magnetostatics')
-checkpoint.load(checkpoint_index=last_idx)
-print(checkpoint.get_registered_objects())
+filename=check_folder+'/part_test_%d.vtk'%track[idx]
+print(sys.argv[1])
+print(filename)
+pos=np.genfromtxt(filename, skip_header=5, skip_footer=404)
+vel=np.genfromtxt(filename, skip_header=208, skip_footer=201)
+dip=np.genfromtxt(filename, skip_header=412)
+print('Positions:', pos.shape)
+print(pos)
+print('============================')
+print('Velocities:', vel.shape)
+print(vel)
+print('============================')
+print('Dipoles:', dip.shape)
+print(dip)
+print('============================')
 
+
+''' Adding Positions, Bonds, Angles, Velocities and Dipoles to system'''
+
+
+system = espressomd.System(box_l=[80, 80, 80])
+system.set_random_state_PRNG()
+system.time_step=0.01
+system.min_global_cut=1.0
+system.cell_system.skin=0.4
+system.thermostat.set_langevin(kT=1.0,gamma=1.0,seed=42)
+system.cell_system.set_domain_decomposition(use_verlet_lists=True)
+#### Pair Potential #######
+system.non_bonded_inter[0,0].wca.set_params(epsilon=1, sigma=1)
+system.non_bonded_inter[1,1].wca.set_params(epsilon=1, sigma=1)
+system.non_bonded_inter[0,1].wca.set_params(epsilon=1, sigma=1)
+######## Bonded Potential ####
+fene = interactions.FeneBond(k=30, d_r_max=1.5)
+system.bonded_inter.add(fene)
+############################################################
+
+### Add positions and bonds#######
+#### Add dipoles #######
+idx=0
+how_many=0.5
+for ii in range(pos.shape[0]):
+    print('Pos:',ii)
+    system.part.add(id=ii,pos=pos[ii,:])
+    i=ii
+    if idx<int(how_many*dip.shape[0]):
+        system.part[i].mol_id=int(np.floor(i/pos.shape[0]))
+        system.part[i].type=1
+        system.part[i].dip=dip[i]
+        system.part[i].dipm=np.linalg.norm(dip[i])
+        system.part[i].rotation=[1,1,1]
+        idx+=1
+    else:
+        system.part[i].mol_id=int(np.floor(i/pos.shape[0]))
+        system.part[i].type=0
+        system.part[i].rotation=[1,1,1]
 p3m = magnetostatics.DipolarP3M(prefactor=1,accuracy=1.2e-3)
 
 system.actors.add(p3m)
 
+p3m.tune(False)
+###### Add velocities #######
+for ii in range(vel.shape[0]):
+    system.part[ii].v=vel[ii]
+
+### Add bonds ####
+for ii in range(pos.shape[0]):
+    if ii==0:
+        system.part[ii].add_bond((fene,ii+pos.shape[0]-1))
+    else:
+        system.part[ii].add_bond((fene,ii-1))
+
+# for i in range (dip.shape[0]):
+#     if idx<int(how_many*dip.shape[0]):
+#         system.part[i].mol_id=int(np.floor(i/pos.shape[0]))
+#         system.part[i].type=1
+#         system.part[i].dip=dip[i]
+#         system.part[i].dipm=np.linalg.norm(dip[i])
+#         system.part[i].rotation=[1,1,1]
+#         idx+=1
+#     else:
+#         system.part[i].mol_id=int(np.floor(i/pos.shape[0]))
+#         system.part[i].type=0
+#         system.part[i].rotation=[1,1,1]
+
+
+### Add angular potential ######
+DP=pos.shape[0]
+angle_harmonic = interactions.AngleCosine(bend=1.5, phi0=np.pi)
+system.bonded_inter.add(angle_harmonic)
+system.part[0].add_bond((angle_harmonic,(0+1)*(pos.shape[0])-1,0*DP+1))
+system.part[(0+1)*pos.shape[0]-2].add_bond((angle_harmonic,(0+1)*(DP)-1,(0)*(DP)))
+for i in range(0,DP-2):
+    id=i
+    system.part[id+1].add_bond((angle_harmonic,id,id+2))
+
+
+
+system.integrator.run(100)
+##################### Done ########################################
+
 
 epsilon=1; sigma=1 #### Define WCA Params ####
 # magnetic field times dipole moment
+H_dipm = int(sys.argv[2])
 dummy=np.random.randn(3)
-if os.path.isfile('H.field')==True:
-    H_field=np.genfromtxt('H.field')
+if os.path.isfile('H_%d.field'%H_dipm)==True:
+    H_field=np.genfromtxt('H_%d.field'%H_dipm)
 else:
-    H_dipm = 1
     H_field = H_dipm*(dummy/np.linalg.norm(dummy))
-    np.savetxt('H.field',H_field)
-##############################################################
-#      Restart from lst frame of magnetic snapshot                                         #
-##############################################################
+    np.savetxt('H_%d.field'%H_dipm,H_field)
+
+##################################################################
+#                                                                #
+#    Restart from equilibrated frame of magnetic snapshot done   #
+#                                                                #
+##################################################################
+
 
 
 log = open("myprog_magnetics_on.log", "w")
@@ -304,7 +390,7 @@ if os.path.isdir(tostore_plots):
 else:
     os.mkdir(tostore_plots)
 #############################################################
-#      Check params                                               #
+#      Check params                                         #
 #############################################################
 log = open("myprog_magnetics_field_warmup.log", "w")
 sys.stdout = log
@@ -317,7 +403,6 @@ gamma=1e0
 tstep=5e-3
 system.time_step = tstep
 
-system.thermostat.set_langevin(kT=1.0, gamma=gamma)
 
 # Setup lists for storing data
 count,steps,count_steps,total_en,kin_en,dipolar_en,pair_en,bond_en,ken_0,ken_1,listoflists,string_lists=list_setup()
@@ -335,60 +420,6 @@ f=open ("vectors_h_file.txt","w");
 f.write("\n\n")
 f.write("VECTORS vectors float")
 f.write("\n\n")
-# f.close()
-# for t in range (1000):
-#     energy=system.analysis.energy()
-#     print("--------------------- Energies --------------------------",flush=True)
-#     print(energy)
-#     print("Timestep is: ",system.time_step)
-#     vtf.writevcf(system, outfile)
-#     system.part.writevtk("./dummy.vtk");
-#     write_to_vtk(vtk_idx);vtk_idx+=1
-#     system.integrator.run(warm_steps)
-#     count_steps+=1
-#     store_all_lists()
-
-#    #z gamma=gamma*0.999995
-#     count+=1
-#     steps.append(count_steps*warm_steps)
-#     total_en.append(energy['total']/npart)
-#     plot_energies('total',total_en,key_2)
-#     kin_en.append(energy['kinetic']/(1.5*npart))
-#     plot_energies('kinetic',kin_en,key_2)
-#     dipolar_en.append(energy['dipolar']/npart)
-#     plot_energies('dipolar',dipolar_en,key_2)
-#     pair_en.append(energy['non_bonded']/npart)
-#     plot_energies('non-bonded',pair_en,key_2)
-#     bond_en.append(energy['bonded']/npart)
-#     plot_energies('bonded',bond_en,key_2)
-#     vel=np.linalg.norm(passive.v,axis=1)
-#     kinetic_passive=(2/3)*(0.5*passive.mass*vel**2)
-#     ken_0.append(kinetic_passive.mean())
-#     plot_energies('T_0',ken_0,key_2)
-#     vel=np.linalg.norm(active.v,axis=1)
-#     kinetic_active=(2/3)*(0.5*active.mass*vel**2)
-#     ken_1.append(kinetic_active.mean())
-#     plot_energies('T_1',ken_1,key_2)
-
-# print("======= ======== =======")
-# print("WARMUP DONE!!")
-# store_all_lists()
-
-# angle_harmonic = interactions.AngleHarmonic(bend=1.0, phi0=2 * np.pi / 3)
-# system.bonded_inter.add(angle_harmonic)
-# nchains=int(system.part[:].pos[:,0].size/DP)
-# monomers=DP
-# for j in range (nchains):
-#     for i in range(int(j*monomers),int((j+1)*monomers)-2):
-#         id=i
-#         system.part[id+1].add_bond((angle_harmonic,id,id+2))
-
-
-
-# # restore simulation temperature
-# system.thermostat.set_langevin(kT=1.0, gamma=1.0)
-# system.integrator.run(warm_steps * 100)
-# print("Finished warmup")
 
 
 H_constraint = espressomd.constraints.HomogeneousMagneticField(H=H_field)
@@ -435,11 +466,12 @@ for t in range(t_steps):
     
     print("--------------------- Energies --------------------------")
     print(energy)
-    
+    #if t==2:
+#	system.
     system.integrator.run(warm_steps)
     vtf.writevcf(system, outfile)
 
-    if t%store_step==0:
+    if t%1==0:
         system.part.writevtk("./dummy.vtk");
         write_to_vtk(vtk_idx);vtk_idx+=1
 
