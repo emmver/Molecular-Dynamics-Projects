@@ -91,7 +91,7 @@ def add_activity(npart,N,key,percent,moment):
                     system.part[i].mol_id=int(np.floor(i/npart))
                     system.part[i].type=1
                     system.part[i].dip=dip_hat
-                    system.part[i].dipm=moment
+                    #system.part[i].dipm=moment
                     system.part[i].rotation=[1,1,1]
                     idx+=1
                 else:
@@ -105,7 +105,7 @@ def add_activity(npart,N,key,percent,moment):
             dip_hat=rand_vect/np.linalg.norm(rand_vect)
             system.part[i].mol_id=int(np.floor(i/npart))
             system.part[i].type=1
-            system.part[i].dip=dip_hat
+           # system.part[i].dip=dip_hat
             system.part[j].dipm=moment
             system.part[j].rotation=[1,1,1]
         for i in ragne (npart):
@@ -124,7 +124,7 @@ def add_activity(npart,N,key,percent,moment):
                 dip_hat=rand_vect/np.linalg.norm(rand_vect)
                 system.part[j].mol_id=int(np.floor(i/npart))
                 system.part[j].type=1
-                system.part[j].dip=dip_hat
+                #system.part[j].dip=dip_hat
                 system.part[j].dipm=moment
         for i in range (npart):
             system.part[i].mol_id=int(np.floor(i/npart))
@@ -192,11 +192,50 @@ def plot_energies(key,plotlist,key_2):
         plt.clf()
 
 
-def write_to_vtk(vtk_idx):
-    store_vtk_file=tostore_vtk+"/part_test_{}.vtk".format(vtk_idx)
-    dip_dummy=tostore_vtk+"/dipoles_dummy.txt"
-    np.savetxt(tostore_vtk+"/dipoles_dummy.txt",system.part[:].dip)
-    os.system("cat ./dummy.vtk ./vectors_h_file.txt " + dip_dummy + " > " + store_vtk_file )
+def vtk_heads():
+    f=open ("pos_h_file.txt","w");
+    f.write('# vtk DataFile Version 2.0')
+    f.write("\n")
+    f.write('particles')
+    f.write('\n')
+    f.write('ASCII')
+    f.write('\n')
+    f.write('DATASET UNSTRUCTURED_GRID')
+    f.write('\n')
+    f.write('POINTS 200 floats')
+  #  f.write('\n')
+#    f.write("POSITIONS positions float")
+ #   f.write("\n")
+    f.close()
+
+
+    f=open ("bidx_h_file.txt","w");
+    f.write('POINT_DATA 200')
+    f.write("\n")
+
+    f.write('SCALARS pbc_idx float 3')
+    f.write("\n")
+
+    f.write('LOOKUP_TABLE default')
+    f.write("\n")
+
+    f.close()
+
+    f=open ("vel_h_file.txt","w");
+    f.write('POINT_DATA 200')
+    f.write("\n")
+    f.write('SCALARS velocity float 3')
+    f.write("\n")
+    f.write('LOOKUP_TABLE default')
+    f.write("\n")
+    f.close()
+
+
+    f=open ("dipoles_h_file.txt","w");
+    f.write("\n\n")
+    f.write("VECTORS dipoles float")
+    f.write("\n\n")
+    f.close()
 
 def store_all_lists():
     for i in range (len(listoflists)):
@@ -431,7 +470,7 @@ for t in range(t_steps):
     system.integrator.run(warm_steps)
     vtf.writevcf(system, outfile)
 
-    if t%1==0:
+    if t%store_step==0:
         system.part.writevtk("./dummy.vtk");
         write_to_vtk(vtk_idx);vtk_idx+=1
 
