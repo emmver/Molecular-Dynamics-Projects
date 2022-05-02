@@ -102,19 +102,22 @@ for i in range(0,4):
     for idx,file in enumerate(files):
         data,box,N=read_lammps_frame(file)
         if i==0:
-            print('zero')
+            print('i=',i)
         elif i==1: 
-            indices=np.where(data[:,9]<8)
+            print('i=',i)
+            indices=np.where(data[:,7]<=8)
             data=data[indices]
         elif i==2:
-            indices=np.where(data[:,9]>=8)
+            print('i=',i)
+            indices=np.where(data[:,7]>10)
             data=data[indices]
         elif i==3: 
-            indices=np.where(np.where(data[:,9]>10)
+            print('i=',i)
+            indices=np.where(data[:,7]>11)
             data=data[indices]
             
         positions=data[:,1:4]
-        print(positions.shape)
+        print('Positions',positions.shape)
         voro = freud.locality.Voronoi()
         voro.compute(system=(box, positions))
         vol_frac=1/(voro.volumes/p_vol)
@@ -123,11 +126,12 @@ for i in range(0,4):
         print(vol_frac.shape)
         plt.hist(vol_frac,bins=fred_diac(vol_frac),density=True,alpha=0.7,label='Cycle: %d'%cycl[idx]);
 
-    plt.legend(frameon=False)
     for lh in plt.legend().legendHandles:
                 lh.set_alpha(1)
     plt.xlabel(r'$\phi$')
     plt.ylabel(r'$P(\phi)$')
+    plt.yscale('log')
+    plt.legend(loc=(1.0,0.5),frameon=False)
     plt.savefig('./histo_vol_frac_%d.jpg'%i,dpi=300,bbox_inches='tight')
     #plt.show();
     plt.clf();
