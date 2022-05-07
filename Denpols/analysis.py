@@ -14,7 +14,7 @@ from hoomd_utils import * ## custom functions
 import sys
 ###### Data import ##########
 global to_store, nk, kgrid,knorm, nkbins,Sskarr,Ssktrans,Sskbb,dr,Lmax,nbins,c_r,cr_bb,Nth,btheta,jj,totrep,mygen,Lbackbone,mybox,nparticles
-os.chdir(sys.argv[1])
+os.chdir('/mnt/d/University/Simulations/Dendronized_polymer/Analysis/HOOMD_DATA/'+sys.argv[1])
 print(os.getcwd())
 filename = sys.argv[2]
 to_store = './results_' +filename[2:-4]
@@ -82,18 +82,17 @@ for frame_index in tqdm(range(pipeline.source.num_frames),desc='G%d_N%d'%(mygen,
     data = pipeline.source.compute(frame_index)
     pos=data.particles.positions[:]
     r2=rg_tens(pos)
-    rgsq.append(r2[0,0]+r2[1,1]+r2[2,2])
-    lambda_1.append(r2[0,0])
-    lambda_2.append(r2[1,1])
-    lambda_3.append(r2[2,2])
+   # rgsq.append(r2[0,0]+r2[1,1]+r2[2,2])
+    np.savetxt(to_store+'/rg_tens_frame_%d.dat'%frame_index,r2)
+
     analyze_sk(data,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone)
     totrep+=1
 norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,pos[:][:,0].size,to_store)
 
 
-gyr_tens=np.vstack([np.array(rgsq),np.array(lambda_1),np.array(lambda_2),np.array(lambda_3)])
+#gyr_tens=np.vstack([np.array(rgsq),np.array(lambda_1),np.array(lambda_2),np.array(lambda_3)])
+#np.savetxt(to_store+'/gyration_tensor.txt',gyr_tens)
 plot_shape(pipeline.source.num_frames,gyr_tens)
-np.savetxt(tostore+'/gyration_tensor.txt',gyr_tens)
 
 
 

@@ -1,0 +1,17 @@
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 3 1000 314 & 
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 4 1000 240
+&
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 5 1000 72
+
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 3 500 1000 
+&
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 4 500 849
+&
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 5 500 467
+
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 3 500 1000 
+&
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 4 500 849  
+&
+python avg_from_runs_hoomd.py 'D:\University\Simulations\Dendronized_polymers\Analysis\HOOMD_Data' 5 500 467
+
