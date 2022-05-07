@@ -91,7 +91,7 @@ def add_activity(npart,N,key,percent,moment):
                     system.part[i].mol_id=int(np.floor(i/npart))
                     system.part[i].type=1
                     system.part[i].dip=dip_hat
-                    #system.part[i].dipm=moment
+                    system.part[i].dipm=moment**0.5
                     system.part[i].rotation=[1,1,1]
                     idx+=1
                 else:
@@ -106,7 +106,7 @@ def add_activity(npart,N,key,percent,moment):
             system.part[i].mol_id=int(np.floor(i/npart))
             system.part[i].type=1
            # system.part[i].dip=dip_hat
-            system.part[j].dipm=moment
+            system.part[j].dipm=moment**0.5
             system.part[j].rotation=[1,1,1]
         for i in ragne (npart):
             system.part[i].mol_id=int(np.floor(i/npart))
@@ -125,7 +125,7 @@ def add_activity(npart,N,key,percent,moment):
                 system.part[j].mol_id=int(np.floor(i/npart))
                 system.part[j].type=1
                 #system.part[j].dip=dip_hat
-                system.part[j].dipm=moment
+                system.part[j].dipm=moment**0.5
         for i in range (npart):
             system.part[i].mol_id=int(np.floor(i/npart))
             system.part[i].rotation=[1,1,1]
@@ -190,6 +190,21 @@ def plot_energies(key,plotlist,key_2):
         plt.xlabel("steps",fontsize=35)
         plt.savefig(tostore_plots+'/energy_{}_{}.png'.format(key,key_2),dpi=300,bbox_inches='tight')
         plt.clf()
+
+
+
+def write_to_vtk(vtk_idx):
+    store_vtk_file=tostore_vtk+"/part_test_{}.vtk".format(vtk_idx)
+    pos_dummy=tostore_vtk+"/pos_dummy.txt"
+    dip_dummy=tostore_vtk+"/dipoles_dummy.txt"
+    bound_idx_dummy=tostore_vtk+"/bidx_dummy.txt"
+    vel_dummy=tostore_vtk+"/veloc_dummy.txt"
+    np.savetxt(pos_dummy,system.part[:].pos)
+    np.savetxt(bound_idx_dummy,(system.part[:].pos/system.box_l))
+    np.savetxt(vel_dummy,system.part[:].v)
+    np.savetxt(dip_dummy,system.part[:].dip)
+    os.system("cat ./pos_h_file.txt " +pos_dummy+ " ./bidx_h_file.txt "+ bound_idx_dummy + " ./vel_h_file.txt "+ vel_dummy +" ./dipoles_h_file.txt " + dip_dummy +" > " + store_vtk_file )
+    os.system("cat " + store_vtk_file + " > ./all.vtk " )
 
 
 def vtk_heads():
@@ -362,7 +377,7 @@ key_2='magnetic_warmup'
 
 active=system.part.select(type=1)
 passive=system.part.select(type=0)
-
+vtk_heads()
 f=open ("vectors_h_file.txt","w");
 f.write("\n\n")
 f.write("VECTORS vectors float")
@@ -445,6 +460,7 @@ warm_steps=10000
 
 ## Setup lists for data storage as well as indices
 count,steps,count_steps,total_en,kin_en,dipolar_en,pair_en,bond_en,ken_0,ken_1,listoflists,string_lists=list_setup()
+vtk_heads()
 
 ############################################################
 tostore_vtk="vtk_equil"                                     #
@@ -495,9 +511,9 @@ for t in range(t_steps):
     ken_1.append(kinetic_active.mean())
     plot_energies('T_1',ken_1,key_2)
 
-    check_idx+=1
-    if t%store_step==0:
-        checkpoint.save(checkpoint_index=check_idx)
+#    check_idx+=1
+ #   if t%store_step==0:
+  #      checkpoint.save(checkpoint_index=check_idx)
 store_all_lists()
 
 outfile.close()

@@ -128,6 +128,30 @@ def compute_msid(positions, start, stop, num_rings, num_mons):
                 j += 1
                 i += 1
     return s, msid/upds
+
+
+
+### Dipole Angles #####
+
+@njit(fastmath=True)
+def dipol_angles(dipoles,start,stop,num_rings,num_mons):
+    s = np.arange(1, stop-start)
+    msid = np.zeros_like(s, dtype=np.float64)
+    #print(msid.shape)
+    upds = np.zeros_like(s, dtype=np.int64)
+    
+    for n in range(num_rings):
+        r = positions[n*num_mons:(n+1)*num_mons]
+        for index, ds in enumerate(s):            
+            i = start
+            j = start + ds
+            while j < stop:
+                dr = r[j] - r[i]
+                msid[index] += dr[0]*dr[0] + dr[1]*dr[1] + dr[2]*dr[2]
+                upds[index] += 1    
+                j += 1
+                i += 1
+    return s, msid/upds
 ###################################################################
 
 
