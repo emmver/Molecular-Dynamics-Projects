@@ -77,7 +77,7 @@ lambda_2=[]
 lambda_3=[]
 jj = -1
 totrep = 0
-for frame_index in tqdm(range(pipeline.source.num_frames),desc='G%d_N%d'%(mygen,Lbackbone)):
+for frame_index in tqdm(range(0,pipeline.source.num_frames),desc='G%d_N%d'%(mygen,Lbackbone)):
     #print("frame:",frame_index)
     data = pipeline.source.compute(frame_index)
     pos=data.particles.positions[:]
@@ -92,7 +92,7 @@ norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,pos[:][:,0].si
 
 #gyr_tens=np.vstack([np.array(rgsq),np.array(lambda_1),np.array(lambda_2),np.array(lambda_3)])
 #np.savetxt(to_store+'/gyration_tensor.txt',gyr_tens)
-plot_shape(pipeline.source.num_frames,gyr_tens)
+#plot_shape(pipeline.source.num_frames,gyr_tens)
 
 
 
