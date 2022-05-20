@@ -371,3 +371,93 @@ def norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,nparticles
 
 
 
+####################### Radial Density Profile ######################################
+
+def rotation_matrix(input_vec, input_ref):
+
+    out = np.empty((3,3),dtype = float)
+
+    n1 = np.linalg.norm(input_vec)
+    if n1 != 1.:
+        v1 = input_vec/n1
+    else:
+        v1 = input_vec
+
+    n2 = np.linalg.norm(input_ref)
+    if n2 != 1.:
+        v2 = input_ref/n2
+    else:
+        v2 = input_ref
+
+    c = np.dot(v1,v2);
+    if c == -1:
+        print("vectors are opposite: rotation not possible!")
+        exit(1)
+
+    if np.array_equal(v1,v2) == True:
+        out = np.identity(3)
+    else:
+        v = np.cross(v1, v2)
+        vmat = np.reshape(np.asarray([0,-v[2], v[1], v[2], 0, -v[0], -v[1], v[0], 0]), (3,3))
+        out = np.identity(3) + vmat + np.dot(vmat,vmat)*(1./(1.+c))
+
+    return v1, v2, out
+
+def rotate_all(input_data, rot_matrix, myaxis):
+
+    mydim = input_data.shape[0]
+    out_data = np.empty_like(input_data)
+
+    for i in range(mydim):
+        temp = input_data[i] - myaxis
+        outtemp = np.dot(rot_matrix,temp)
+        out_data[i] = outtemp
+
+    return out_data
+
+
+def radial_density_cylinder(_input0, _inputbb, lp, mygen, Nbins):
+
+    NN = _inputbb.shape[0]
+    zaxis = np.asarray([0,0,1])
+
+    allr = []; allth = []
+
+    _step = int(2.**(mygen+1.)-1.)
+
+    i = 0
+    while(i != NN):
+        i1 = i+lp+1
+        
+        if i1 > NN-1:
+            i1 = NN-1
+        
+        vec = _inputbb[i1] - _inputbb[i]
+       
+        _input = _input0[i*_step:i1*_step]
+
+        v1, v2, rm = rotation_matrix(vec, zaxis)
+        newdata = rotate_all(_input, rm, _inputbb[i])
+        #if i == 0:
+        #    print_lorenzo(newdata, 100., "test.dat")
+        #    print_lorenzo(_input, 100., "test0.dat")
+
+        #temp0 = newdata[np.where(newdata[:,2] < i1)]
+        #temp1 = temp0[np.where(temp0[:,2] > 0)]
+        
+        r = np.linalg.norm(newdata[:,:2], axis=1); allr.extend(r)
+        theta = np.arctan2(newdata[:,1],newdata[:,0]); allth.extend(theta)
+        
+        i = i1+1
+     
+    rhist, bin_edges = np.histogram(allr, bins = Nbins, range=(0,10), density=False)
+    rbins = 0.5*(bin_edges[1:]+bin_edges[:-1])
+
+    thhist, bin_edges = np.histogram(allth, bins = Nbins, range=(-np.pi,np.pi), density=False)
+    thbins = 0.5*(bin_edges[1:]+bin_edges[:-1])
+
+    return [rbins, rhist], [thbins, thhist]
+    
+
+
+

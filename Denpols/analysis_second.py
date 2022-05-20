@@ -23,30 +23,6 @@ if os.path.isdir(to_store)==False:
 pipeline=import_file(filename)
 data = pipeline.source.compute()
 ################################
-
-### For analysis of structure factor ####
-_sk = ctypes.CDLL('/mnt/c/Users/Toumba/Documents/GitHub/emmver/Denpols/struc_fact/libsk.so')
-_sk.calc_sk.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
-
-nk = int(np.log(10./0.001)/np.log(1.05)); print ("How many k",nk)
-kgrid, knorm, nkbins= generate_kgrid_rand(nk, 0.001, 1.05)
-
-Sskarr = np.zeros((nkbins),dtype = np.double)
-Ssktrans = np.zeros((nkbins),dtype = np.double)
-
-Sskbb = np.zeros((nkbins),dtype = np.double)
-
-dr = 0.1;Lmax = 200.;nbins=int(Lmax/dr)
-c_r = np.zeros((nbins), dtype = float)
-cr_bb = np.zeros((nbins), dtype = float)
-
-jj = -1
-totrep = 0
-mygen = int(sys.argv[3])
-Lbackbone = int(sys.argv[4])
-mybox = data.cell[0,0]
-#########################################################################
-
 ### My plotting style is inputted here #####
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 150
@@ -68,31 +44,44 @@ plt.rcParams['ytick.major.width'] = 2
 plt.rcParams['xtick.major.pad']='8'
 plt.rcParams['ytick.major.pad']='8'
 #############################################
+def avg_persistence():
+    kk=0
+    lp_proj_f=lp_proj[0]
+    for i in range (1,pipeline.source.num_frames-1):
+        lp_proj_f[:]=[sum(x) for x in zip(lp_proj_f,lp_proj[i])]
+        kk+=1
+    lp_proj_f[:]=[x/kk for x in lp_proj_f]
+    outfiles=os.path.join(tostore,"persistency_g%d%d.txt"%(gen,Lbackbone))
+    g=open(outfiles,"w")
+    for i in range (len(bonds)):
+        g.write("%.5f\t%.5f\n" % (bonds[i],lp_proj_f[i]))
+    g.close()
 
+
+#############################################
 
 print(os.getcwd())
-rgsq=[]
-lambda_1=[]
-lambda_2=[]
-lambda_3=[]
-jj = -1
 totrep = 0
+lp_proj=[]
+bonds=[]
+mygen = int(sys.argv[3])
+Lbackbone = int(sys.argv[4])
+mybox = data.cell[0,0]
+for i in range (0,Lbackbone-1):
+	bonds.extend([(i+1)/Lbackbone])
 for frame_index in tqdm(range(0,pipeline.source.num_frames),desc='G%d_N%d'%(mygen,Lbackbone)):
-    #print("frame:",frame_index)
     data = pipeline.source.compute(frame_index)
     pos=data.particles.positions[:]
-    r2=rg_tens(pos)
-   # rgsq.append(r2[0,0]+r2[1,1]+r2[2,2])
-    np.savetxt(to_store+'/rg_tens_frame_%d.dat'%frame_index,r2)
+    tmp=[]
 
-    analyze_sk(data,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone)
+    for j in range (Nbb-1):
+       # print(j*(1+2**(gen+1)))
+        bondvect=unwrap[(j+1)*(1+2**(gen+1))]-unwrap[j*(1+2**(gen+1))]
+        bondlength=np.linalg.norm(bondvect)
+        calc=np.dot(bondvect,endtoend)/bondlength**2
+        tmp.extend([calc])
+    lp_proj.append(tmp)
+
     totrep+=1
-norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,pos[:][:,0].size,to_store)
 
-
-#gyr_tens=np.vstack([np.array(rgsq),np.array(lambda_1),np.array(lambda_2),np.array(lambda_3)])
-#np.savetxt(to_store+'/gyration_tensor.txt',gyr_tens)
-#plot_shape(pipeline.source.num_frames,gyr_tens)
-
-
-
+avg_persistence()
