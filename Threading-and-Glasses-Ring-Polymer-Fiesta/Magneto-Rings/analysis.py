@@ -149,7 +149,7 @@ def dipol_angles(dipoles,start,stop,num_rings,num_mons):
             while j < stop:
                 dotp=np.dot(r[j]/np.linalg.norm(r[j]),r[i]/np.linalg.norm(r[i]))
                 #dr = r[j] - r[i]
-                msid[index] += dotp*180/np.pi
+                msid[index] += np.arccos(dotp)*180/np.pi
                 upds[index] += 1    
                 j += 1
                 i += 1
@@ -369,7 +369,7 @@ for d in part_dict:
                 for dip_count in tqdm(range(0,len(dipol_files)),desc='Dipole Angles'):
                     dipoles=np.genfromtxt(dipol_files[dip_count],skip_header=412)
                     dipoles=dipoles[:eff_DP]
-                    dipol_dist[:-1,0],dipol_dist[:-1,ii]=dipol_angles(dipoles,start,stop,nch,eff_DP)
+                    dipol_dist[:-1,0],dipol_dist[:-1,dip_count]=dipol_angles(dipoles,start,stop,nch,eff_DP)
                 dipol_dist[:-1,-1]=np.mean(dipol_dist[:-1,1:-1],axis=1)
                 np.savetxt(msid_dir+'/'+d+'dipol_dist_RUN_%d_lambda_%d.dat'%(run_count,i),dipol_dist[:-1,:])
             elif d=='passive':
