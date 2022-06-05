@@ -12,13 +12,13 @@ def rg_tens (r):
     for i in range (N):
         for j in range (N):
             r2[0,0]+=(r[i,0]-r[j,0])*(r[i,0]-r[j,0])#diag
-            r2[1,0]+=(r[i,1]-r[j,0])*(r[i,1]-r[j,0])#ndiag
-            r2[2,0]+=(r[i,2]-r[j,0])*(r[i,2]-r[j,0])#ndiag
-            r2[0,1]+=(r[i,0]-r[j,1])*(r[i,0]-r[j,1])#ndiag
-            r2[0,2]+=(r[i,0]-r[j,2])*(r[i,0]-r[j,2])#ndiag
+            r2[1,0]+=(r[i,1]-r[j,1])*(r[i,0]-r[j,0])#ndiag
+            r2[2,0]+=(r[i,2]-r[j,2])*(r[i,0]-r[j,0])#ndiag
+            r2[0,1]+=(r[i,0]-r[j,0])*(r[i,1]-r[j,1])#ndiag
+            r2[0,2]+=(r[i,0]-r[j,0])*(r[i,2]-r[j,2])#ndiag
             r2[1,1]+=(r[i,1]-r[j,1])*(r[i,1]-r[j,1])#diag
-            r2[2,1]+=(r[i,2]-r[j,1])*(r[i,2]-r[j,1])#ndiag
-            r2[1,2]+=(r[i,1]-r[j,2])*(r[i,1]-r[j,2])#ndiag
+            r2[2,1]+=(r[i,2]-r[j,2])*(r[i,1]-r[j,1])#ndiag
+            r2[1,2]+=(r[i,1]-r[j,1])*(r[i,2]-r[j,2])#ndiag
             r2[2,2]+=(r[i,2]-r[j,2])*(r[i,2]-r[j,2])# diag
     r2=r2/(2*N**2)
     #rg2=r2[0,0]**2+r2[1,1]**2+r2[2,2]**2
@@ -26,7 +26,7 @@ def rg_tens (r):
 
 def plot_shape(num_frames,gyr_tens):
     frames=np.arange(num_frames)+1
-    plt.plot(frames,gyr_tens[0]**0.5,color='#cc0000')
+    plt.plot(frames,gyr_tens[:,0]**0.5,color='#cc0000')
     plt.xlabel('Frames')
     plt.ylabel('$R_g [\sigma]$')
 
@@ -34,9 +34,9 @@ def plot_shape(num_frames,gyr_tens):
     plt.clf()
     ### Eigenvalues - Normalized ####
     colors = pl.cm.jet(np.linspace(0,0.8,3))
-    plt.plot(frames,gyr_tens[1]/gyr_tens[0],color=colors[0],label=r'$\lambda_1$')
-    plt.plot(frames,gyr_tens[2]/gyr_tens[0],color=colors[1],label=r'$\lambda_2$')
-    plt.plot(frames,gyr_tens[3]/gyr_tens[0],color=colors[2],label=r'$\lambda_3$')
+    plt.plot(frames,gyr_tens[:,1]/gyr_tens[:,0],color=colors[0],label=r'$\lambda_1$')
+    plt.plot(frames,gyr_tens[:,2]/gyr_tens[:,0],color=colors[1],label=r'$\lambda_2$')
+    plt.plot(frames,gyr_tens[:,3]/gyr_tens[:,0],color=colors[2],label=r'$\lambda_3$')
     plt.xlabel('Frames')
     plt.ylabel(r'$\frac{\lambda_i}{R_g^2}$')
     plt.legend(frameon=False,loc=(0.2,1.02),ncol=3)
@@ -44,9 +44,9 @@ def plot_shape(num_frames,gyr_tens):
     plt.clf()
     ### Ratio of Eigenvalues ###
     colors = pl.cm.jet(np.linspace(0,0.8,3))
-    plt.plot(frames,gyr_tens[1]/gyr_tens[2],color=colors[0],label=r'$\frac{\lambda_1}{\lambda_2}$')
-    plt.plot(frames,gyr_tens[2]/gyr_tens[3],color=colors[1],label=r'$\frac{\lambda_2}{\lambda_3}$')
-    plt.plot(frames,gyr_tens[3]/gyr_tens[1],color=colors[2],label=r'$\frac{\lambda_3}{\lambda_1}$')
+    plt.plot(frames,gyr_tens[:,1]/gyr_tens[:,2],color=colors[0],label=r'$\frac{\lambda_1}{\lambda_2}$')
+    plt.plot(frames,gyr_tens[:,2]/gyr_tens[:,3],color=colors[1],label=r'$\frac{\lambda_2}{\lambda_3}$')
+    plt.plot(frames,gyr_tens[:,3]/gyr_tens[:,1],color=colors[2],label=r'$\frac{\lambda_3}{\lambda_1}$')
     plt.xlabel('Frames')
     plt.ylabel(r'$\frac{\lambda_i}{\lambda_j}$')
     plt.legend(frameon=False,loc=(0.8,0.53))
@@ -54,9 +54,9 @@ def plot_shape(num_frames,gyr_tens):
     plt.clf()
 
     #### Shape Parameters - Normalized #####
-    b=1.5*gyr_tens[2] - gyr_tens[0]/2
-    c=gyr_tens[2]-gyr_tens[3]
-    k=(b**2 + 0.75 * c**2)/gyr_tens[0]**2
+    b=gyr_tens[:,1] - (gyr_tens[:,2]+gyr_tens[:,3])/2
+    c=gyr_tens[:,2]-gyr_tens[:,3]
+    k=(b**2 + 0.75 * c**2)/gyr_tens[:,0]**2
     plt.plot(frames,b/gyr_tens[0],color=colors[0],label=r'b')
     plt.plot(frames,c/gyr_tens[0],color=colors[1],label=r'c')
     plt.plot(frames,k,color=colors[2],label=r'$\kappa^2 $')

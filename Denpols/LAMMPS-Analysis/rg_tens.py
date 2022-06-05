@@ -87,13 +87,13 @@ def rg_tens (r):
     for i in range (N):
         for j in range (N):
             r2[0,0]+=(r[i,0]-r[j,0])*(r[i,0]-r[j,0])#diag
-            r2[1,0]+=(r[i,1]-r[j,0])*(r[i,1]-r[j,0])#ndiag
-            r2[2,0]+=(r[i,2]-r[j,0])*(r[i,2]-r[j,0])#ndiag
-            r2[0,1]+=(r[i,0]-r[j,1])*(r[i,0]-r[j,1])#ndiag
-            r2[0,2]+=(r[i,0]-r[j,2])*(r[i,0]-r[j,2])#ndiag
+            r2[1,0]+=(r[i,1]-r[j,1])*(r[i,0]-r[j,0])#ndiag
+            r2[2,0]+=(r[i,2]-r[j,2])*(r[i,0]-r[j,0])#ndiag
+            r2[0,1]+=(r[i,0]-r[j,0])*(r[i,1]-r[j,1])#ndiag
+            r2[0,2]+=(r[i,0]-r[j,0])*(r[i,2]-r[j,2])#ndiag
             r2[1,1]+=(r[i,1]-r[j,1])*(r[i,1]-r[j,1])#diag
-            r2[2,1]+=(r[i,2]-r[j,1])*(r[i,2]-r[j,1])#ndiag
-            r2[1,2]+=(r[i,1]-r[j,2])*(r[i,1]-r[j,2])#ndiag
+            r2[2,1]+=(r[i,2]-r[j,2])*(r[i,1]-r[j,1])#ndiag
+            r2[1,2]+=(r[i,1]-r[j,1])*(r[i,2]-r[j,2])#ndiag
             r2[2,2]+=(r[i,2]-r[j,2])*(r[i,2]-r[j,2])# diag
     r2=r2/(2*N**2)
     #rg2=r2[0,0]**2+r2[1,1]**2+r2[2,2]**2
