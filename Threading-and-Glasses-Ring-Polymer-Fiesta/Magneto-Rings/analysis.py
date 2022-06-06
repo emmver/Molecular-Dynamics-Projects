@@ -11,7 +11,8 @@ import matplotlib as mpl
 import os
 from numba import njit
 import tarfile
-
+from sympy import Matrix
+from tqdm import tqdm
 def read_traj(f,npart):
     out=[]
     for i in range (npart):
@@ -37,13 +38,13 @@ def rg_tens (r):
     for i in range (N):
         for j in range (N):
             r2[0,0]+=(r[i,0]-r[j,0])*(r[i,0]-r[j,0])#diag
-            r2[1,0]+=(r[i,1]-r[j,0])*(r[i,1]-r[j,0])#ndiag
-            r2[2,0]+=(r[i,2]-r[j,0])*(r[i,2]-r[j,0])#ndiag
-            r2[0,1]+=(r[i,0]-r[j,1])*(r[i,0]-r[j,1])#ndiag
-            r2[0,2]+=(r[i,0]-r[j,2])*(r[i,0]-r[j,2])#ndiag
+            r2[1,0]+=(r[i,1]-r[j,1])*(r[i,0]-r[j,0])#ndiag
+            r2[2,0]+=(r[i,2]-r[j,2])*(r[i,0]-r[j,0])#ndiag
+            r2[0,1]+=(r[i,0]-r[j,0])*(r[i,1]-r[j,1])#ndiag
+            r2[0,2]+=(r[i,0]-r[j,0])*(r[i,2]-r[j,2])#ndiag
             r2[1,1]+=(r[i,1]-r[j,1])*(r[i,1]-r[j,1])#diag
-            r2[2,1]+=(r[i,2]-r[j,1])*(r[i,2]-r[j,1])#ndiag
-            r2[1,2]+=(r[i,1]-r[j,2])*(r[i,1]-r[j,2])#ndiag
+            r2[2,1]+=(r[i,2]-r[j,2])*(r[i,1]-r[j,1])#ndiag
+            r2[1,2]+=(r[i,1]-r[j,1])*(r[i,2]-r[j,2])#ndiag
             r2[2,2]+=(r[i,2]-r[j,2])*(r[i,2]-r[j,2])# diag
     r2=r2/(2*N**2)
     #rg2=r2[0,0]**2+r2[1,1]**2+r2[2,2]**2
@@ -141,13 +142,14 @@ def dipol_angles(dipoles,start,stop,num_rings,num_mons):
     upds = np.zeros_like(s, dtype=np.int64)
     
     for n in range(num_rings):
-        r = positions[n*num_mons:(n+1)*num_mons]
+        r = dipoles[n*num_mons:(n+1)*num_mons]
         for index, ds in enumerate(s):            
             i = start
             j = start + ds
             while j < stop:
-                dr = r[j] - r[i]
-                msid[index] += dr[0]*dr[0] + dr[1]*dr[1] + dr[2]*dr[2]
+                dotp=np.dot(r[j]/np.linalg.norm(r[j]),r[i]/np.linalg.norm(r[i]))
+                #dr = r[j] - r[i]
+                msid[index] += np.arccos(dotp)*180/np.pi
                 upds[index] += 1    
                 j += 1
                 i += 1
@@ -211,10 +213,10 @@ elif sys.argv[2]=='linear':
 angles=0
 how_many=0.5 
 part_dict=['total','active','passive']
-
+lambdas_w=[1,2,4,6,9,12,16]
 for d in part_dict:
     print('NOW RUNNING',d)
-    for i in range(1,5):
+    for i in lambdas_w:
         print('lambda:',i)
         #files_list=[]
         paths=glob.glob("RUN_*/lambda_%d/polymer_magnetic.vtf"%(i))
@@ -308,7 +310,7 @@ for d in part_dict:
 
 
             rgs_tens= np.zeros((nchains, frames,3,3))
-            for ii in range (frames):
+            for ii in tqdm(range(0,frames),desc='Gyration Tensor Calculation'):
                     g="Frame:%d"%(ii+1)
                     sys.stdout.write("\r" + str(g))
                     sys.stdout.flush()
@@ -325,10 +327,10 @@ for d in part_dict:
             radii=[]
             radii_all=np.zeros((frames,nchains))
             rg_tensor_eigen=np.zeros((frames,3))
-            for ii in range (frames):
-                tocalc=np.diag(rgs_tens[:,ii][0][0:3])
-
-                tocalc=tocalc[tocalc.argsort()]
+            for ii in tqdm(range(0,frames),desc='Gyration Tensor Diag'):
+                M=Matrix(rgs_tens[:,ii][0][0:3])
+                P,D=M.diagonalize()
+                tocalc=np.sort(np.diag(D))
                 temp_rg=0
                 temp_rs=[]
                 temp_eigen=np.array([0,0,0])
@@ -351,19 +353,37 @@ for d in part_dict:
                 start=0
                 stop=int(DP/2)
                 eff_DP=DP
+                msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
+                for ii in tqdm(range(0,frames),desc='Internal Distances'):
+                    msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, eff_DP)
             elif d=='active':
                 start=0
                 stop=int(DP*how_many)
                 eff_DP=int(DP/2)
+                msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
+                dipol_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
+                dipol_files=glob.glob(os.path.dirname(file)+'/vtk_equil/part_test_*.vtk')
+                print(dipol_files[0])
+                for ii in tqdm(range(0,frames),desc='Internal Distances'):
+                    msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, eff_DP)
+                for dip_count in tqdm(range(0,len(dipol_files)),desc='Dipole Angles'):
+                    dipoles=np.genfromtxt(dipol_files[dip_count],skip_header=412)
+                    dipoles=dipoles[:eff_DP]
+                    dipol_dist[:-1,0],dipol_dist[:-1,dip_count]=dipol_angles(dipoles,start,stop,nch,eff_DP)
+                dipol_dist[:-1,-1]=np.mean(dipol_dist[:-1,1:-1],axis=1)
+                np.savetxt(msid_dir+'/'+d+'dipol_dist_RUN_%d_lambda_%d.dat'%(run_count,i),dipol_dist[:-1,:])
             elif d=='passive':
                 start=0
                 stop=int(DP*(1-how_many))
                 eff_DP=int(DP/2)
-            msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
-            for ii in range (frames):
-                msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, eff_DP)
+                msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
+                for ii in tqdm(range(0,frames),desc='Internal Distances'):
+                    msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, eff_DP)
+
             msid_dist[:-1,-1]=np.mean(msid_dist[:-1,1:-1],axis=1)
+            
             np.savetxt(msid_dir+'/'+d+'msids_RUN_%d_lambda_%d.dat'%(run_count,i),msid_dist[:-1,:])
+           
             run_count+=1
             f.close()
 
