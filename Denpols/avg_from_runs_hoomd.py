@@ -70,7 +70,7 @@ print('=============')
 bb_list=glob.glob('./G%d_%d/RUN_*/results*/*%d%d_bb'%(gen,N,gen,N))
 print(bb_list)
 print('==============')
-gyr_tens=np.zeros((points,4))
+gyr_tens=np.zeros((points,5))
 data_den=np.zeros((186,2))
 data_bb=np.zeros((186,2))
 for i in range(len(file_list)):
@@ -79,7 +79,7 @@ for i in range(len(file_list)):
     data=np.genfromtxt(file)
     if N!=1000:
         data=np.genfromtxt(file)
-        data=data.T
+        data=data
    #num_frames=data[:,0].size
     gyr_tens+=data[:points]
     #w_path=os.path.dirname(os.path.abspath(file))

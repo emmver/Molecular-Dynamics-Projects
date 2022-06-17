@@ -317,14 +317,17 @@ def avg_bending_angle(bonds, blength, out):
         out[binn] += 1.
 
 
-def analyze_sk(data,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone):
+def analyze_sk(data,types,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone):
     nparticles=data.particles.positions[:][:,0].size
     unwrap = data.particles.positions[:] 
     CoM = center_of_mass(unwrap, mybox, 'nopbc')
     unwrap2 = np.copy(unwrap); unwrap2[:] -= CoM
     _sk.calc_sk (ctypes.c_void_p(kgrid.ctypes.data), ctypes.c_void_p(unwrap.ctypes.data), ctypes.c_void_p(Sskarr.ctypes.data), ctypes.c_int(nparticles), ctypes.c_int(nkbins))
-    types=data.particles.particle_types[:]
-    temp=unwrap[np.where(types==0)]
+    
+
+    print('Types',types.shape)
+    temp=np.take(unwrap,types,axis=0)
+    print('Temp shape:',temp.shape)
     backbone=temp
     _sk.calc_sk (ctypes.c_void_p(kgrid.ctypes.data), ctypes.c_void_p(backbone.ctypes.data), ctypes.c_void_p(Sskbb.ctypes.data), ctypes.c_int(Lbackbone), ctypes.c_int(nkbins))
     bonds = backbone[1:] - backbone[:-1]

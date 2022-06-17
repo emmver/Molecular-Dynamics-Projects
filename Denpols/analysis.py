@@ -26,20 +26,20 @@ data = pipeline.source.compute()
 ################################
 
 ### For analysis of structure factor ####
-# _sk = ctypes.CDLL('/mnt/c/Users/Toumba/Documents/GitHub/emmver/Denpols/struc_fact/libsk.so')
-# _sk.calc_sk.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
+_sk = ctypes.CDLL('/mnt/c/Users/Toumba/Documents/GitHub/emmver/Denpols/struc_fact/libsk.so')
+_sk.calc_sk.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
 
-# nk = int(np.log(10./0.001)/np.log(1.05)); print ("How many k",nk)
-# kgrid, knorm, nkbins= generate_kgrid_rand(nk, 0.001, 1.05)
+nk = int(np.log(10./0.001)/np.log(1.05)); print ("How many k",nk)
+kgrid, knorm, nkbins= generate_kgrid_rand(nk, 0.001, 1.05)
 
-# Sskarr = np.zeros((nkbins),dtype = np.double)
-# Ssktrans = np.zeros((nkbins),dtype = np.double)
+Sskarr = np.zeros((nkbins),dtype = np.double)
+Ssktrans = np.zeros((nkbins),dtype = np.double)
 
-# Sskbb = np.zeros((nkbins),dtype = np.double)
+Sskbb = np.zeros((nkbins),dtype = np.double)
 
-# dr = 0.1;Lmax = 200.;nbins=int(Lmax/dr)
-# c_r = np.zeros((nbins), dtype = float)
-# cr_bb = np.zeros((nbins), dtype = float)
+dr = 0.1;Lmax = 200.;nbins=int(Lmax/dr)
+c_r = np.zeros((nbins), dtype = float)
+cr_bb = np.zeros((nbins), dtype = float)
 
 jj = -1
 totrep = 0
@@ -75,9 +75,14 @@ print(os.getcwd())
 rgsq=np.zeros((pipeline.source.num_frames,5))
 jj = -1
 totrep = 0
+types=np.zeros((Lbackbone),dtype=np.int)
+for i in range (Lbackbone):
+    types[i]=i*(2**(mygen+1)+1)
+#print('types',types)
 for frame_index in tqdm(range(0,pipeline.source.num_frames),desc='G%d_N%d'%(mygen,Lbackbone)):
     #print("frame:",frame_index)
     data = pipeline.source.compute(frame_index)
+
     pos=data.particles.positions[:]
     r2=rg_tens(pos)
     M=Matrix(r2)
@@ -91,7 +96,7 @@ for frame_index in tqdm(range(0,pipeline.source.num_frames),desc='G%d_N%d'%(myge
    # rgsq.append(r2[0,0]+r2[1,1]+r2[2,2])
     np.savetxt(to_store+'/rg_tens_frame_%d.dat'%frame_index,D)
 
-    #analyze_sk(data,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone)
+    analyze_sk(data,types,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone)
     totrep+=1
 #norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,pos[:][:,0].size,to_store)
 
