@@ -84,6 +84,8 @@ for frame_index in tqdm(range(0,pipeline.source.num_frames),desc='G%d_N%d'%(myge
     data = pipeline.source.compute(frame_index)
 
     pos=data.particles.positions[:]
+    temp=np.take(unwrap,types,axis=0)
+    export_file(pos, "output.gsd", "gsd/hoomd")
     r2=rg_tens(pos)
     M=Matrix(r2)
     P,D=M.diagonalize()

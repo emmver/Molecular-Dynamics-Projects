@@ -327,6 +327,7 @@ def analyze_sk(data,types,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone):
 
     print('Types',types.shape)
     temp=np.take(unwrap,types,axis=0)
+    export_file(pipeline, "output.xyz", "gsd/hoomd")
     print('Temp shape:',temp.shape)
     backbone=temp
     _sk.calc_sk (ctypes.c_void_p(kgrid.ctypes.data), ctypes.c_void_p(backbone.ctypes.data), ctypes.c_void_p(Sskbb.ctypes.data), ctypes.c_int(Lbackbone), ctypes.c_int(nkbins))
