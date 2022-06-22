@@ -12,6 +12,7 @@ from numba import njit
 from tqdm import tqdm
 from hoomd_utils import * ## custom functions
 import sys
+from sympy import Matrix 
 ###### Data import ##########
 global to_store, nk, kgrid,knorm, nkbins,Sskarr,Ssktrans,Sskbb,dr,Lmax,nbins,c_r,cr_bb,Nth,btheta,jj,totrep,mygen,Lbackbone,mybox,nparticles
 os.chdir('/mnt/d/University/Simulations/Dendronized_polymer/Analysis/HOOMD_DATA/'+sys.argv[1])
@@ -71,28 +72,40 @@ plt.rcParams['ytick.major.pad']='8'
 
 
 print(os.getcwd())
-rgsq=[]
-lambda_1=[]
-lambda_2=[]
-lambda_3=[]
+rgsq=np.zeros((pipeline.source.num_frames,5))
 jj = -1
 totrep = 0
+types=np.zeros((Lbackbone),dtype=np.int)
+for i in range (Lbackbone):
+    types[i]=i*(2**(mygen+1)+1)
+#print('types',types)
 for frame_index in tqdm(range(0,pipeline.source.num_frames),desc='G%d_N%d'%(mygen,Lbackbone)):
     #print("frame:",frame_index)
     data = pipeline.source.compute(frame_index)
+
     pos=data.particles.positions[:]
+    temp=np.take(unwrap,types,axis=0)
+    export_file(pos, "output.gsd", "gsd/hoomd")
     r2=rg_tens(pos)
+    M=Matrix(r2)
+    P,D=M.diagonalize()
+    c,b,a=np.sort(np.diag(D))
+    rgsq[frame_index,0]=frame_index
+    rgsq[frame_index,1]=np.trace(D)
+    rgsq[frame_index,2]=a
+    rgsq[frame_index,3]=b
+    rgsq[frame_index,4]=c
    # rgsq.append(r2[0,0]+r2[1,1]+r2[2,2])
-    np.savetxt(to_store+'/rg_tens_frame_%d.dat'%frame_index,r2)
+    np.savetxt(to_store+'/rg_tens_frame_%d.dat'%frame_index,D)
 
-    analyze_sk(data,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone)
+    analyze_sk(data,types,Sskarr,mybox,Sskbb,kgrid,nkbins,_sk,Lbackbone)
     totrep+=1
-norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,pos[:][:,0].size,to_store)
+#norm_sk(totrep,Sskarr,Sskbb,Ssktrans,knorm,nkbins,mygen,Lbackbone,pos[:][:,0].size,to_store)
 
-
+#print(rgsq,lambda_1,lambda_2,lambda_3)
 #gyr_tens=np.vstack([np.array(rgsq),np.array(lambda_1),np.array(lambda_2),np.array(lambda_3)])
-#np.savetxt(to_store+'/gyration_tensor.txt',gyr_tens)
-#plot_shape(pipeline.source.num_frames,gyr_tens)
+np.savetxt(to_store+'/gyration_tensor.txt',rgsq)
+plot_shape(pipeline.source.num_frames,rgsq)
 
 
 
