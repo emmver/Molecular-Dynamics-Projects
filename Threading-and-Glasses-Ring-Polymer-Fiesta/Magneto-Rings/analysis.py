@@ -1,3 +1,25 @@
+'''
+This script finds and reads in the .dat files (see variables filename and files). These files are produced during analysis.
+These files contain a table with dimensions ("separation distance", "number of frames"). Basically each row contains the average value corresponding to 
+some separation distance for each frame (columns).
+
+Usage: python3 dipol_angle_distr.py /path/to/files DP
+
+DP is the degree of polymerization. There are other variables in the script which are very important:
+
+1) how_many: percentage of magnetic monomers 
+2) nchains: number of chains 
+3) lambdas: list with lambdas to look for and calculate 
+4) histo_steps: histograms to plot for specific separation distances 
+
+The Plot style section can be erased without much changing in the script. 
+Otherwise the provided plostyle.mpl file should be used. 
+'''
+
+
+
+
+
 import numpy as np 
 #import MDAnalysis as mda
 from matplotlib import pyplot as plt 
@@ -13,6 +35,8 @@ from numba import njit
 import tarfile
 from sympy import Matrix
 from tqdm import tqdm
+import statsmodels.api as sm
+####################################################################
 def read_traj(f,npart):
     out=[]
     for i in range (npart):
@@ -149,11 +173,11 @@ def dipol_angles(dipoles,start,stop,num_rings,num_mons):
             while j < stop:
                 dotp=np.dot(r[j]/np.linalg.norm(r[j]),r[i]/np.linalg.norm(r[i]))
                 #dr = r[j] - r[i]
-                msid[index] += np.arccos(dotp)*180/np.pi
+                msid[index] += dotp #np.arccos(dotp)*180/np.pi
                 upds[index] += 1    
                 j += 1
                 i += 1
-    return s, msid/upds
+    return s, (msid/upds)
 ###################################################################
 
 
@@ -201,7 +225,16 @@ skipframes=3000
 run_steps=10000
 nchains=1
 nch=nchains
-DP=200
+DP=int(sys.argv[3])
+
+if DP==100:
+    dipol_skiplines1=315
+    dipol_skiplines2=315
+elif DP==200:
+    dipol_skiplines1=614
+    dipol_skiplines2=412
+
+
 Dpol=DP
 L=80
 box=L
@@ -212,8 +245,11 @@ elif sys.argv[2]=='linear':
     bonds=npart-1
 angles=0
 how_many=0.5 
-part_dict=['total','active','passive']
+part_dict=['active','total','passive']
+#part_dict=['active']
 lambdas_w=[1,2,4,6,9,12,16]
+#lambdas_w=[1,4,9,16]
+
 for d in part_dict:
     print('NOW RUNNING',d)
     for i in lambdas_w:
@@ -230,13 +266,15 @@ for d in part_dict:
             file=paths[j]
             print("Working on file",file)
             f=open(file,'r')
-            if d==part_dict[1] or d==part_dict[2]:
+            if d==part_dict[0] or d==part_dict[2]:
                     pos=np.zeros((int(frames_in),int(npart*how_many),3))
             else:
                 pos=np.zeros((int(frames_in),(npart),3))
             for ii in range (int(npart)+bonds+angles+2):
-                    f.readline()
+                    print(f.readline())
             print(f.readline())
+
+            print('skipframes')
             for ii in range (skipframes):
                 data=read_traj(f,npart)
             count_frames=0
@@ -249,19 +287,19 @@ for d in part_dict:
                     sys.stdout.write("\r" + str(g))
                     sys.stdout.flush()
                     data=read_traj(f,npart)
-                    if d==part_dict[0]:
+                    if d==part_dict[1]:
                         pos[count_frames]=data[:,1:]
-                    elif d==part_dict[1]:
-                        pos[count_frames]=data[:100,1:]
+                    elif d==part_dict[0]:
+                        pos[count_frames]=data[:int(npart*how_many),1:]
                     elif d==part_dict[2]:
-                        pos[count_frames]=data[100:,1:]
+                        pos[count_frames]=data[int(npart*how_many):,1:]
                     count_frames+=1
                 except Exception as e:
                     print("Except:",e)
                     print('stopped at',count_frames)
                     pos=pos[:count_frames,:,:]
                     gg.write('%d'%count_frames)
-                    gg.write('\n')
+                    #gg.write('\n')
                     break
 
             frames=count_frames
@@ -343,9 +381,18 @@ for d in part_dict:
                 rg_tensor_eigen[ii]=temp_eigen
             #print("\n Radii")
             #print(radii)
+         
             if j==0:
                 j=1
             radii=np.asarray(radii)/j
+            rg_tensor_eigen=rg_tensor_eigen/j
+            corr=np.stack((time,radii),axis=-1)
+            _M =corr[:].shape[0]
+            acf, ci = sm.tsa.acf(radii[:], alpha=0.05,nlags=_M,fft=True)
+            tacf=np.arange(_M)*1000
+            np.savetxt(gyr_directory+'/'+d+'_tsa_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((tacf,acf),axis=-1)))
+            np.savetxt(gyr_directory+'/'+d+'_rg_RUN_%d_lambda_%d.dat'%(run_count,i),(np.stack((time[:],radii),axis=-1)))
+            np.savetxt(gyr_directory+'/'+d+'_eigen_RUN_%d.dat'%(run_count),(np.column_stack([time[:],rg_tensor_eigen])))
             
             ### Internal Distances #####
             #DP=pos.shape[1]
@@ -361,14 +408,42 @@ for d in part_dict:
                 stop=int(DP*how_many)
                 eff_DP=int(DP/2)
                 msid_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
-                dipol_dist=np.zeros((np.arange(0,int(stop-start)).size,frames+1))
-                dipol_files=glob.glob(os.path.dirname(file)+'/vtk_equil/part_test_*.vtk')
+                temp_dipol_files=glob.glob(os.path.dirname(file)+'/vtk_equil/part_test_*.vtk')
+                #print(dipol_files)
+                pop_idx=np.arange(500,len(temp_dipol_files))
+                dipol_files=[]
+                for pop in pop_idx:
+                    dipol_files.append(glob.glob(os.path.dirname(file)+'/vtk_equil/part_test_%d.vtk'%pop)[0])
+                print('Files:',len(dipol_files))
+               # sys.exit()
+                dipol_dist=np.zeros((np.arange(0,int(stop-start)).size,len(dipol_files)+1))
                 print(dipol_files[0])
                 for ii in tqdm(range(0,frames),desc='Internal Distances'):
                     msid_dist[:-1,0],msid_dist[:-1,ii]=compute_msid(pos[ii,:], start, stop, nch, eff_DP)
                 for dip_count in tqdm(range(0,len(dipol_files)),desc='Dipole Angles'):
-                    dipoles=np.genfromtxt(dipol_files[dip_count],skip_header=412)
-                    dipoles=dipoles[:eff_DP]
+                    if i==2 or i==6 or i==12:
+                        dipoles_in=np.genfromtxt(dipol_files[dip_count],skip_header=dipol_skiplines1)#614)
+                    else:
+                        dipoles_in=np.genfromtxt(dipol_files[dip_count],skip_header=dipol_skiplines2)#412)
+                    del_list=[]
+                #    for del_idx, i in enumerate(dipoles_in):
+                        #print(i)
+                        #if np.linalg.norm(i)==0:
+                            #del_list.append(del_idx)
+                            #dipoles=np.delete(dipoles_in,del_idx)
+                    
+                    #if i==2:
+                    dip_idx=[]   
+                    for dip in range(dipoles_in[:,0].size):
+                        if np.linalg.norm(dipoles_in[dip])==0:
+                            #print('Deleted:',dip)
+                            #print('----------------------')i
+                            dip_idx.append(dip)
+                    dipoles=np.delete(dipoles_in,dip_idx,axis=0)
+                    #print(dipoles.shape)
+                        #print(dipoles[dip])    
+                        #print(dip,np.linalg.norm(dipoles[dip])**2)
+                   # print(dipoles[:eff_DP])
                     dipol_dist[:-1,0],dipol_dist[:-1,dip_count]=dipol_angles(dipoles,start,stop,nch,eff_DP)
                 dipol_dist[:-1,-1]=np.mean(dipol_dist[:-1,1:-1],axis=1)
                 np.savetxt(msid_dir+'/'+d+'dipol_dist_RUN_%d_lambda_%d.dat'%(run_count,i),dipol_dist[:-1,:])
@@ -383,7 +458,7 @@ for d in part_dict:
             msid_dist[:-1,-1]=np.mean(msid_dist[:-1,1:-1],axis=1)
             
             np.savetxt(msid_dir+'/'+d+'msids_RUN_%d_lambda_%d.dat'%(run_count,i),msid_dist[:-1,:])
-           
+            
             run_count+=1
             f.close()
 
