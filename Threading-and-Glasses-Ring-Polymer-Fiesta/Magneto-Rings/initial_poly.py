@@ -1,7 +1,28 @@
 
-"""
-This reads the checkpoint of an equilibrated passive system and adds magnetic dipoles in diffent forms, block, random or alternating copolymer"
-"""
+'''
+This script can creates an initial configuration of a given number of rings, with all monomers of a single ring postioned on a circle.
+The centers of the rings are put on simple cubic lattice points, under dilute conditions, to avoid overlaps.
+Then bonds are added.
+
+
+Usage: /path/to/pypresso initial_poly.py /path/to/working_directory
+
+The simulation consists of two steps:
+1) Warm up: The force is capped and slowly ramped up over time. This is done because the circular conformation may lead 
+to frustrated bonds that may break during the first steps of integration. This way, by force capping, bonds are not broken
+and the confirmation slowly changes to a stable one. 
+
+Here, the force cap, gamma and minimal distances are tracked and plotted as well as the energies.
+
+2) Integration: Here the force cap has been removed and the simulation is a typical MD simulation
+with a Langevin thermostat.
+
+Here we keep track of the energies 
+
+Important Variables
+1) DP: Degree of polymerization
+2) nchains: Number of chains
+'''
 import espressomd
 espressomd.assert_features('WCA','DIPOLES')
 from espressomd import thermostat
@@ -23,12 +44,15 @@ import time
 from espressomd.observables import ParticlePositions
 from espressomd.accumulators import Correlator
 
+
+
+########### Plot Style #############
+
 mpl.rcParams['figure.dpi'] = 400
 plt.rcParams["font.family"] = "Ubuntu"
-#plt.style.use('C:/Users/Toumba/Documents/plotstyle.mplstyle')
-plt.style.use('~/plotstyle.mplstyle')
+plt.style.use('~/plotstyle.mplstyle') #Here input path to plotstyle.mpl file
 
-plt.rcParams['axes.linewidth'] = 4
+plt.rcParams['axes.linewidth'] = 
 plt.rcParams['xtick.major.size'] = 8 
 plt.rcParams['ytick.major.size'] = 8 
 plt.rcParams['xtick.labelsize']=20
@@ -51,100 +75,11 @@ warnings.filterwarnings('ignore')
 
 np.seterr(all="ignore")
 
-
-
-
-
-def checkIfDuplicates_1(listOfElems):
-    ''' Check if given list contains any duplicates '''
-    if len(listOfElems) == len(set(listOfElems)):
-        return False
-    else:
-        return True
-
-
-def generate_random_list(times,max_n):
-    out=[]
-    times=int(times)
-    max_n=int(max_n)
-    for i in range(times):
-        out.append(np.random.randint(max_n))
-    result = checkIfDuplicates_1(out)
-    while result==True:
-        print('Yes, list contains duplicates')
-        out=[]
-        for i in range(times):
-            out.append(np.random.randint(max_n))
-    
-    print('No duplicates found in list')
-    return out
-
-
-def add_activity(npart,N,key,percent,moment): 
-    nchains=int(npart/N)
-    if key=='block':
-        for j in range (nchains):
-            idx=0
-            for i in range (int(j*N),int((j+1)*N)):
-                if idx<int(percent*N): 
-                    rand_vect=np.random.rand(3)
-                    dip_hat=rand_vect/np.linalg.norm(rand_vect)
-                    system.part[i].mol_id=int(np.floor(i/npart))
-                    system.part[i].type=1
-                    system.part[i].dip=dip_hat
-                   # system.part[i].dipm=moment
-                    system.part[i].rotation=[1,1,1]
-                    idx+=1
-                else:
-                    system.part[i].mol_id=int(np.floor(i/npart))
-                    #system.part[i].type=1
-                    system.part[i].rotation=[1,1,1]
-
-    elif key=='copolymer':
-        for i in range (npart,2):
-            rand_vect=np.random.rand(3)
-            dip_hat=rand_vect/np.linalg.norm(rand_vect)
-            system.part[i].mol_id=int(np.floor(i/npart))
-            system.part[i].type=1
-            system.part[i].dip=dip_hat
-            #system.part[j].dipm=moment
-            system.part[j].rotation=[1,1,1]
-        for i in ragne (npart):
-            system.part[i].mol_id=int(np.floor(i/npart))
-            system.part[i].rotation=[1,1,1]
-
-    elif key=='random':
-        nchains=int(npart/N)
-        for i in range(nchains):
-            random_list=generate_random_list(percent*N,i*N)
-            for j in random_list:
-                dip_phi = np.random.random(()) *2. * np.pi
-                dip_cos_theta = 2*np.random.random(()) -1
-                dip_sin_theta = np.sin(np.arccos(dip_cos_theta))
-                rand_vect=np.array([dip_sin_theta *np.sin(dip_phi),dip_sin_theta *np.cos(dip_phi),dip_cos_theta])
-                dip_hat=rand_vect/np.linalg.norm(rand_vect)
-                system.part[j].mol_id=int(np.floor(i/npart))
-                system.part[j].type=1
-                system.part[j].dip=dip_hat
-                #system.part[j].dipm=moment
-        for i in range (npart):
-            system.part[i].mol_id=int(np.floor(i/npart))
-            system.part[i].rotation=[1,1,1]
-
-
-
-    system.non_bonded_inter[0,0].wca.set_params(
-    epsilon=epsilon, sigma=sigma)
-
-    system.non_bonded_inter[1,1].wca.set_params(
-    epsilon=epsilon, sigma=sigma)
-
-    system.non_bonded_inter[0,1].wca.set_params(
-    epsilon=epsilon, sigma=sigma)
-
-
-
 def plot_min_dist_force(key):
+    '''
+    This function plots the minimal distance, force cap and gamma  , during the warmup step.
+    key denotes the warmup or integration step
+    '''
         plt.plot(steps,min_dist,'ro-',markerfacecolor=None)
         plt.ylabel("min_dist",fontsize=35)
         plt.yscale('log')
@@ -171,6 +106,11 @@ def plot_min_dist_force(key):
         plt.clf()
 
 def plot_energies(key,plotlist,key_2):
+    '''
+    This function plots the list given through the plotlist variable.
+    key: which energy is plotted e.g. bonded
+    key_2: for which part. e.g active (magnetic) or passive
+    '''
         plt.plot(steps,plotlist,'ro-',markerfacecolor=None)
         plt.ylabel("{} energy".format(key),fontsize=35)
        # plt.yscale('log')
@@ -189,7 +129,7 @@ os.chdir(sys.argv[1])
 log = open("myprog.log", "w")
 sys.stdout = log
 
-DP=10
+DP=200
 chains=1
 mpclist = [DP,DP]#[400,800]#
 maxmpc = max(mpclist)
@@ -202,6 +142,11 @@ print(n_rows)
 L = 1.1*n_rows*la
 print(L, L , L) 
 
+'''
+Here the system variables are set (box size, timestep, skin of neighbor list etc.)
+
+See espressomd documentation for details: https://espressomd.github.io/doc4.1.4/system_setup.html
+'''
 
 system = espressomd.System(box_l=[L, L, L])
 system.set_random_state_PRNG()
@@ -214,6 +159,8 @@ system.cell_system.skin = 0.4
 system.thermostat.set_langevin(kT=1.0, gamma=1.0, seed=np.random.randint(1e6))
 system.cell_system.set_domain_decomposition(use_verlet_lists=True)
 
+#Pair potentials are set
+
 system.non_bonded_inter[0,0].wca.set_params(
     epsilon=1, sigma=1)
 
@@ -224,11 +171,17 @@ system.non_bonded_inter[0,1].wca.set_params(
     epsilon=1, sigma=1)
 
 
+#Bonded potentials are set
 fene = interactions.FeneBond(k=30, d_r_max=1.5)
 system.bonded_inter.add(fene)
 
 
 np.random.seed(int(time.time()))#22378)
+
+'''
+This double loop constructs the ring circular conformation. 
+
+'''
 for nca in [chains]:#[10,30,50,70,90,100,110,130,150,170,190]:
     for dirnr in range(1):
         mpclist = [DP,DP]#[400,800]#
@@ -294,7 +247,7 @@ for nca in [chains]:#[10,30,50,70,90,100,110,130,150,170,190]:
             #    data.append([pid,ch+1, 1, rvec[0],rvec[1],rvec[2]])
             #    data2.append([pid, 1, rvec[0],rvec[1],rvec[2]])
                 print("Adding Particle:",pid)
-                system.part.add(id=pid, pos=[rvec[0],rvec[1],rvec[2]]);
+                system.part.add(id=pid, pos=[rvec[0],rvec[1],rvec[2]]); #particlescare 
 
                 if ii==0:
                     bonds.append([pid,pid+Nlist[ch-1]-1])
