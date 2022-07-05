@@ -13,7 +13,7 @@ DP is the degree of polymerization. There are other variables in the script whic
 4) histo_steps: histograms to plot for specific separation distances 
 
 The Plot style section can be erased without much changing in the script. 
-Otherwise the provided plostyle.mpl file should be used. 
+Otherwise the provided plostyle.mpl file should be used οr created from scratch. 
 '''
 
 
@@ -21,7 +21,6 @@ Otherwise the provided plostyle.mpl file should be used.
 
 
 import numpy as np 
-#import MDAnalysis as mda
 from matplotlib import pyplot as plt 
 from numba import njit
 import sys

@@ -150,7 +150,6 @@ See espressomd documentation for details: https://espressomd.github.io/doc4.1.4/
 
 system = espressomd.System(box_l=[L, L, L])
 system.set_random_state_PRNG()
-#system.seed = system.cell_system.get_state()['n_nodes'] * [1234]
 np.random.seed(seed=system.seed)
 
 system.time_step = 0.01
@@ -179,12 +178,13 @@ system.bonded_inter.add(fene)
 np.random.seed(int(time.time()))#22378)
 
 '''
-This double loop constructs the ring circular conformation. 
-
+This double loop constructs the ring circular conformation and places the rings centers of mass on lattice points (on a simple cubic lattice).
+This script was provided by Jan Smrek and was built to accomodate polydispersity in ring sizes. 
+The variable mpclist is supposed to accomodate the different degrees of polymerization.
 '''
-for nca in [chains]:#[10,30,50,70,90,100,110,130,150,170,190]:
+for nca in [chains]:
     for dirnr in range(1):
-        mpclist = [DP,DP]#[400,800]#
+        mpclist = [DP,DP] # 
         maxmpc = max(mpclist)
         nc = chains
 
@@ -202,7 +202,10 @@ for nca in [chains]:#[10,30,50,70,90,100,110,130,150,170,190]:
         #np.savetxt(outpath+'chain_lengths.dat',Nlist,fmt='%d')
         totnp = sum(Nlist)
         print(totnp)
-
+        '''
+        This loop writes each monomer coordinate, for each ring (in the case of more than 1 rings), in the ring_primitive list. 
+        The x and y coordinates follow a circle of radius r. 
+        '''
         ring_primitive = []
         for mpc in mpclist:
             r = mpc/np.pi/2.0
@@ -218,66 +221,60 @@ for nca in [chains]:#[10,30,50,70,90,100,110,130,150,170,190]:
         print(len(ring_primitive[0]))
         print(len(ring_primitive[1]))
 
-        data = []
-        data2 = []
-        bonds = []
-        angles=[]
+        
         ch=0
         pid=0
 
         alist = np.random.choice(range(n_rows*n_rows*n_rows),n_rows*n_rows*n_rows,replace=False)
         chck = []
         print('alist',alist)
+        '''
+        This loop places the rings on the lattice points.
+        '''
         for u in alist:
-            i=u%n_rows #int(math.floor(u/(n_rows*n_rows)))
-            j=((u-i)/n_rows)%n_rows #int(math.floor((u-i*(n_rows*n_rows))/n_rows))
-            k=(u-j*n_rows-i)/(n_rows*n_rows) #u%n_rows
+            i=u%n_rows 
+            j=((u-i)/n_rows)%n_rows 
+            k=(u-j*n_rows-i)/(n_rows*n_rows) 
             if [i,j,k] in chck:
                 print("UAAAAAAAAA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             else:
                 chck.append([i,j,k])
             if ch>=nc:
-                
                 break
+
             R = np.array([-L/2.0 + la/2.0 + i*la,-L/2.0 + la/2.0 + j*la, -L/2.0 + la/2.0 + k*la    ])                
             M = special_ortho_group.rvs(3) #random rotational matrix
             rp = [elem for elem in ring_primitive if len(elem)==Nlist[ch]][0]
+            '''
+            Here the coordinates of each monomer and the bonds are added in the espresso system with the system.part commands.
+            '''
             for ii in range(Nlist[ch]):
                 rvec = R + np.dot(M,rp[ii])
-            #    data.append([pid,ch+1, 1, rvec[0],rvec[1],rvec[2]])
-            #    data2.append([pid, 1, rvec[0],rvec[1],rvec[2]])
+           
                 print("Adding Particle:",pid)
-                system.part.add(id=pid, pos=[rvec[0],rvec[1],rvec[2]]); #particlescare 
+                system.part.add(id=pid, pos=[rvec[0],rvec[1],rvec[2]]); #add particles
 
-                if ii==0:
-                    bonds.append([pid,pid+Nlist[ch-1]-1])
-                    #bonds.append([pid, 1, pid+Nlist[ch]-1,pid])
-                    system.part[pid].add_bond((fene, pid+Nlist[ch]-1))
+                if ii==0:  #closing bond
+                    system.part[pid].add_bond((fene, pid+Nlist[ch]-1)) #add closing bond
                 else:
-                    #bonds.append([pid, 1, pid-1,pid])
-                    bonds.append([pid,pid+1])
-                    system.part[pid].add_bond((fene, pid-1))
+                    system.part[pid].add_bond((fene, pid-1)) #add other bonds
                
-                pid+=1
-            ch+=1
+                pid+=1 #update particle id
+            ch+=1 # update chain id
 
 
 print("============= BONDS ==============")
-print(bonds)
-outfile = open('polymer.vtf', 'w')
+outfile = open('polymer.vtf', 'w') #vtf files are used in VMD for visualization. Here the polymer.vtf file is created.
 
-#energy=system.analysis.energy()
 print("Number of particles:",DP*chains)
 print("Example position",system.part[0].pos)
-#print("Example position 2",system.part[240].pos)
-#print("example 3", system.part[991].pos)
+
 print("{} chains with {} monomers each".format(chains, DP))
 print(system.part[:].id)
 np.savetxt("pid.dat",system.part[:].id,fmt="%d")
-vtf.writevsf(system, outfile)
-vtf.writevcf(system, outfile)
-
-npart=system.part[:].pos[:,0].size
+vtf.writevsf(system, outfile) #vtf.writevsf writes in the polymer.vtf file the system structure i.e. number of particles, type of each particle, bonds between particles, angles between particles etc. 
+vtf.writevcf(system, outfile) #vtf.writevtf writes in the particle coordinates x,y,z (unwrapped) for each frame. 
+npart=system.part[:].pos[:,0].size 
 
 
 
@@ -285,16 +282,15 @@ npart=system.part[:].pos[:,0].size
 #      Warmup                                               #
 #############################################################
 
-warm_steps = 10
-wca_cap = 1
+warm_steps = 10 # steps for each warm-up integration step (i.e. each )
+wca_cap = 1 #force cap
 system.force_cap = wca_cap
 i = 0
-act_min_dist = system.analysis.min_dist()
+act_min_dist = system.analysis.min_dist() # minimal distance between particles
 tostore_plots="./passive_warmup"
 if os.path.isdir(tostore_plots)==False:
     os.mkdir(tostore_plots)
-# warmup with zero temperature to remove overlaps
-system.thermostat.set_langevin(kT=0.0, gamma=1.0)
+
 gamma=1.0
 # slowly ramp un up the cap
 steps=[]
@@ -307,13 +303,10 @@ while (act_min_dist < 0.95):
     gammas.append(gamma)
     vtf.writevcf(system, outfile)
     print("min_dist: {} \t force cap: {}".format(act_min_dist, wca_cap))
-    system.part[:].v=[0,0,0]
     print("--------------------- Energies --------------------------")
     print(energy)
-    #print("total energy: {} \t kinetic energy: {} \t bonded energy: {} \t non-bonded energy: {} \t".format(energy["total"],energy["kinetic"],energy["bonded"],energy["non_bonded"]))
-    system.integrator.run(warm_steps)
-    #system.part[:].v = [0, 0, 0]
-    # Warmup criterion
+    system.integrator.run(warm_steps) # each time the following loop runs the integration moves forward by warm_steps #
+
     steps.append(count_steps)
     min_dist.append(system.analysis.min_dist())
     fcap.append(wca_cap)
@@ -328,23 +321,23 @@ wca_cap = 0
 system.force_cap = wca_cap
 system.integrator.run(warm_steps * 10)
 
-log = open("myprog_afterwarmup.log", "w")
+log = open("myprog_afterwarmup.log", "w") #change logging file
 sys.stdout = log
 
-system.thermostat.set_langevin(kT=1.0, gamma=1.0)
-print("#### Temp Test ######")
-print("Temperatures=\n {}".format(system.part[:].temp))
+
 system.integrator.run(warm_steps * 10)
 print("Finished warmup")
 
-log = open("myprog_equil.log", "w")
+log = open("myprog_equil.log", "w") #change logging file
 sys.stdout = log
 #############################################################
 #      Equilibration                                          #
 #############################################################
 tostore_plots="./passive_equil"
 if os.path.isdir(tostore_plots)==False:
-    os.mkdir(tostore_plots)
+    os.mkdir(tostore_plots) #folder to store plots for equilibration
+
+# lists to store energies
 steps=[]
 total_en=[]
 kin_en=[]
@@ -353,24 +346,25 @@ pair_en=[]
 bond_en=[]
 print("simulating...")
 check_path="mycheck_passive"
-checkpoint=checkpointing.Checkpoint(checkpoint_id=check_path,checkpoint_path='.')
-checkpoint.register("system")
-t_steps = 10000
+checkpoint=checkpointing.Checkpoint(checkpoint_id=check_path,checkpoint_path='.') #checkpoiniting --> restart files
+checkpoint.register("system") #registering the whole system in the checkpoint
+t_steps = 10000 # how many integration steps 
 check_idx=0
 count=0
 key_2='passive'
-warm_steps=1000
+run_steps=1000 #each integration step moves the simulation along for warm_steps. 
+
+'''Eventually the simulation will run for t_steps * warm_steps. Be properly deciding warm_steps it is very easy to get uncorrelated frames.'''
 
 for t in range(t_steps):
     energy=system.analysis.energy()
     print("step {} of {}".format(t, t_steps))
-    #print("total energy: {} \t kinetic energy: {} \t bonded energy: {} \t non-bonded energy: {} \t".format(energy["total"],energy["kinetic"],energy["bonded"],energy["non_bonded"]))
     
     print("--------------------- Energies --------------------------")
     print(energy)
-    system.integrator.run(warm_steps)
+    system.integrator.run(run_steps)
     count+=1
-    steps.append(count*warm_steps)
+    steps.append(count*run_steps)
     vtf.writevcf(system, outfile)
     total_en.append(energy['total']/npart)
     plot_energies('total',total_en,key_2)
@@ -383,7 +377,7 @@ for t in range(t_steps):
     bond_en.append(energy['bonded']/npart)
     plot_energies('bonded',bond_en,key_2)
     if t%100==0:
-        checkpoint.save(checkpoint_index=check_idx)
+        checkpoint.save(checkpoint_index=check_idx) #save checkpoint every 100 integration steps
     check_idx+=1
 
 outfile.close()
