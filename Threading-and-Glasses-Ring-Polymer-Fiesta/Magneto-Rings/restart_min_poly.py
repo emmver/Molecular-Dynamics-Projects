@@ -1,7 +1,14 @@
+'''
+This reads the checkpoint of an equilibrated passive system and adds magnetic dipoles in diffent forms, block, random or alternating copolymer.
+It works for both linear and ring polymers. 
+Use is: /path/to/pypresso restart_min_poly.py checkpoint_folder_name value_of_lambda working_directory
 
-"""
-This reads the checkpoint of an equilibrated passive system and adds magnetic dipoles in diffent forms, block, random or alternating copolymer"
-"""
+important variables:
+1) DP : Degree of Polymerization
+2) dip_moment: is actually the lambda value (proportional do dipole_moment^2)
+3) how_many: How many particles will be magnetic. Expressed as a percentage of the total number of particles.
+'''
+
 import espressomd
 espressomd.assert_features('WCA','DIPOLES')
 from espressomd import thermostat
@@ -9,7 +16,6 @@ from espressomd import interactions
 from espressomd import polymer
 from espressomd.io.writer import vtf  # pylint: disable=import-error
 import numpy as np
-import logging
 from espressomd import checkpointing
 import espressomd.magnetostatics as magnetostatics
 import sys
@@ -17,10 +23,12 @@ import warnings
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 import os 
-import glob 
+import glob
+
+
+##########################################################
 mpl.rcParams['figure.dpi'] = 400
 plt.rcParams["font.family"] = "Ubuntu"
-#plt.style.use('C:/Users/Toumba/Documents/plotstyle.mplstyle')
 plt.style.use('~/plotstyle.mplstyle')
 
 plt.rcParams['axes.linewidth'] = 4
@@ -62,7 +70,8 @@ def checkIfDuplicates_1(listOfElems):
         return True
 
 
-def generate_random_list(times,max_n):
+def generate_random_list(times,max_n
+    ''' Generates a random list of numbers '''
     out=[]
     times=int(times)
     max_n=int(max_n)
@@ -80,34 +89,41 @@ def generate_random_list(times,max_n):
 
 
 def add_activity(npart,N,key,percent,moment): 
+     '''
+     This function adds dipole moments to a percentage of the particles.
+     Needs as input the number of particles and the degree of polymerization, here N. 
+     The key, which will dictate the way in which the dipole moments will be added. Options are
+     'block', to create a diblock copolymer, 'copolymer' to create an alternating copolymer, 'random' to create 
+     a random copolymer.
+     '''
     nchains=int(npart/N)
     if key=='block':
         for j in range (nchains):
             idx=0
             for i in range (int(j*N),int((j+1)*N)):
                 if idx<int(percent*N): 
-                    rand_vect=np.random.rand(3)
-                    dip_hat=rand_vect/np.linalg.norm(rand_vect)
-                    system.part[i].mol_id=int(np.floor(i/npart))
-                    system.part[i].type=1
-                    system.part[i].dip=dip_hat
-                    system.part[i].dipm=moment**0.5
-                    system.part[i].rotation=[1,1,1]
+                    rand_vect=np.random.rand(3) # random vector for the orientation of the dipole
+                    dip_hat=rand_vect/np.linalg.norm(rand_vect) # unit vector for the orientation of the dipole
+                    system.part[i].mol_id=int(np.floor(i/npart)) # id of molecule. useful in the case of more than one polymers.
+                    system.part[i].type=1 # magnetic particle type 
+                    system.part[i].dip=dip_hat # adding the unitary dipole vector to the system
+                    system.part[i].dipm=moment**0.5 #adding a dipole moment value to the system, dictated by the lambda given initially.
+                    system.part[i].rotation=[1,1,1] # activating rotation of each particle, it is turned off by default in espressomd.
                     idx+=1
                 else:
-                    system.part[i].mol_id=int(np.floor(i/npart))
+                    system.part[i].mol_id=int(np.floor(i/npart)) # id of molecule. useful in the case of more than one polymers.
                     #system.part[i].type=1
-                    system.part[i].rotation=[1,1,1]
+                    system.part[i].rotation=[1,1,1]  # activating rotation of each particle, it is turned off by default in espressomd.
 
     elif key=='copolymer':
-        for i in range (npart,2):
-            rand_vect=np.random.rand(3)
-            dip_hat=rand_vect/np.linalg.norm(rand_vect)
-            system.part[i].mol_id=int(np.floor(i/npart))
-            system.part[i].type=1
-           # system.part[i].dip=dip_hat
-            system.part[j].dipm=moment**0.5
-            system.part[j].rotation=[1,1,1]
+        for i in range (npart,2): 
+            rand_vect=np.random.rand(3)  # random vector for the orientation of the dipole
+            dip_hat=rand_vect/np.linalg.norm(rand_vect) # unit vector for the orientation of the dipole
+            system.part[i].mol_id=int(np.floor(i/npart)) # id of molecule. useful in the case of more than one polymers.
+            system.part[i].type=1 # magnetic particle type
+            system.part[i].dip=dip_hat # adding the unitary dipole vector to the system
+            system.part[j].dipm=moment**0.5 #adding a dipole moment value to the system, dictated by the lambda given initially.
+            system.part[j].rotation=[1,1,1] # activating rotation of each particle, it is turned off by default in espressomd.
         for i in ragne (npart):
             system.part[i].mol_id=int(np.floor(i/npart))
             system.part[i].rotation=[1,1,1]
@@ -115,12 +131,9 @@ def add_activity(npart,N,key,percent,moment):
     elif key=='random':
         nchains=int(npart/N)
         for i in range(nchains):
-            random_list=generate_random_list(percent*N,i*N)
+            random_list=generate_random_list(percent*N,i*N) #random list to add dipoles into completely random monomers
             for j in random_list:
-                dip_phi = np.random.random(()) *2. * np.pi
-                dip_cos_theta = 2*np.random.random(()) -1
-                dip_sin_theta = np.sin(np.arccos(dip_cos_theta))
-                rand_vect=np.array([dip_sin_theta *np.sin(dip_phi),dip_sin_theta *np.cos(dip_phi),dip_cos_theta])
+                rand_vect=np.random.rand(3)  # random vector for the orientation of the dipole
                 dip_hat=rand_vect/np.linalg.norm(rand_vect)
                 system.part[j].mol_id=int(np.floor(i/npart))
                 system.part[j].type=1
@@ -133,7 +146,8 @@ def add_activity(npart,N,key,percent,moment):
 
 
 def list_setup():
-    # Setup lists for storing data
+   '''Sets up lists for storing data'''
+                         
     count=0
     int_cycl=50
     steps=[]
@@ -156,6 +170,7 @@ def list_setup():
 
 
 def plot_min_dist_force(key):
+         ''' plots minimal distance, force cap and gamma as a function of simulation step '''
         plt.plot(steps,min_dist,'ro-',markerfacecolor=None)
         plt.ylabel("min_dist",fontsize=35)
         plt.yscale('log')
@@ -182,6 +197,7 @@ def plot_min_dist_force(key):
         plt.clf()
 
 def plot_energies(key,plotlist,key_2):
+        ''' plots energies as function of simulation step''' 
         plt.plot(steps,plotlist,'ro-',markerfacecolor=None)
         plt.ylabel("{} energy".format(key),fontsize=35)
        # plt.yscale('log')
@@ -194,6 +210,10 @@ def plot_energies(key,plotlist,key_2):
 
 
 def write_to_vtk(vtk_idx):
+     ''' 
+     Writes vtk file containing all frames. vtk files contain vector information for dipoles, velocities as well as positions.
+     Another script is needed to 'split' this all.vtk to separate frames. 
+     '''
     store_vtk_file=tostore_vtk+"/part_test_{}.vtk".format(vtk_idx)
     pos_dummy=tostore_vtk+"/pos_dummy.txt"
     dip_dummy=tostore_vtk+"/dipoles_dummy.txt"
@@ -208,6 +228,7 @@ def write_to_vtk(vtk_idx):
 
 
 def vtk_heads():
+     ''' Writes header files for each vtk sector '''
     f=open ("pos_h_file.txt","w");
     f.write('# vtk DataFile Version 2.0')
     f.write("\n")
@@ -253,6 +274,7 @@ def vtk_heads():
     f.close()
 
 def store_all_lists():
+    ''' Stores all lists '''
     for i in range (len(listoflists)):
         np.savetxt(tostore_plots+"/"+string_lists[i],listoflists[i])
 
@@ -261,13 +283,14 @@ check_folder='../mycheck_passive'
 checks=glob.glob(check_folder+'/*')
 checks.sort(key=os.path.getmtime)
 print(checks)
-checkpoint=checkpointing.Checkpoint(checkpoint_id=sys.argv[1],checkpoint_path='..')
-name=checks[-1].split('/')
+checkpoint=checkpointing.Checkpoint(checkpoint_id=sys.argv[1],checkpoint_path='..') # finding checkpoints
+name=checks[-1].split('/') # gettin last checkpoint
 print('Name:',name)
 print(name[2][0:4])
 last_idx=int(name[2][0:4])
 print("last idx:",last_idx)
-checkpoint.load(checkpoint_index=last_idx)
+checkpoint.load(checkpoint_index=last_idx) # loading last checkpoint
+DP=200 #degree of polymerization
 
 epsilon=1; sigma=1 #### Define WCA Params ####
 
@@ -276,7 +299,7 @@ epsilon=1; sigma=1 #### Define WCA Params ####
 ##############################################################
 
 
-log = open("myprog_magnetics_on.log", "w")
+log = open("myprog_magnetics_on.log", "w") #log file
 sys.stdout = log
 
 print("Positions=\n {}".format(system.part[:].pos))
@@ -294,7 +317,7 @@ print("=================== =================== =====================")
 print("Particles:",system.part[:].pos[:,0].size)
 print("=================== =================== =====================")
 
-DP=10
+
 print("#### Temp Test ######")
 
 print("Temperatures=\n {}".format(system.part[:].temp))
@@ -322,38 +345,38 @@ print("system.thermostat.get_state() = {}".format(system.thermostat.get_state())
 
 
 
-outfile = open('polymer_magnetic.vtf', 'w')
+outfile = open('polymer_magnetic.vtf', 'w') # writing vtf outfile
 
-dip_howmany=0.5
+dip_howmany=0.5 # ratio magnetic/all particles
 print("number of magnetic particles:",int(system.part[:].pos[:,0].size*dip_howmany))
-dip_moment=float(sys.argv[2])
+dip_moment=float(sys.argv[2]) # lambda ~ dipole_moment^2
 npart=system.part[:].pos[:,0].size
 ###### Adding dipole moments ####################
 add_activity(system.part[:].pos[:,0].size,DP,'block',dip_howmany,dip_moment)
 print("\n### system.dip test ###")
 print("system.part[:].dip = {}".format(system.part[:].dip))
 
-p3m = magnetostatics.DipolarP3M(prefactor=1,accuracy=1.2e-3)
+p3m = magnetostatics.DipolarP3M(prefactor=1,accuracy=1.2e-3) # p3m solver for dipolar interactions
 
 system.actors.add(p3m)
 
 print("DONE!")
-tostore_vtk="vtk_warmup"
+tostore_vtk="vtk_warmup" 
 vtk_idx=0
 if os.path.isdir(tostore_vtk):
     pass 
 else:
-    os.mkdir(tostore_vtk)
+    os.mkdir(tostore_vtk) ## store VTK files
 
 tostore_plots='magnetic_plots'
 if os.path.isdir(tostore_plots):
     pass 
 else:
-    os.mkdir(tostore_plots)
+    os.mkdir(tostore_plots) # store plots 
 #############################################################
 #      Check params                                               #
 #############################################################
-log = open("myprog_magnetics_warmup.log", "w")
+log = open("myprog_magnetics_warmup.log", "w") #changing log files
 sys.stdout = log
 print("Start Warmup after magnetics",flush=True)
 print("================ ============== ===================",flush=True)
@@ -362,12 +385,12 @@ i = 0
 
 gamma=1e0
 tstep=5e-3
-system.time_step = tstep
+system.time_step = tstep #setting time-step --> Change from initial in checkpoint
 
-system.thermostat.set_langevin(kT=1.0, gamma=gamma)
+system.thermostat.set_langevin(kT=1.0, gamma=gamma) #--> Setting thermostat
 
 # Setup lists for storing data
-count,steps,count_steps,total_en,kin_en,dipolar_en,pair_en,bond_en,ken_0,ken_1,listoflists,string_lists=list_setup()
+count,steps,count_steps,total_en,kin_en,dipolar_en,pair_en,bond_en,ken_0,ken_1,listoflists,string_lists=list_setup() ##setting up lists
 vtf.writevsf(system, outfile)
 vtf.writevcf(system, outfile)
 energy=system.analysis.energy()
@@ -375,7 +398,7 @@ system.integrator.set_vv()
 
 key_2='magnetic_warmup'
 
-active=system.part.select(type=1)
+active=system.part.select(type=1) #splitting active (magnetic) particles from passive ones.
 passive=system.part.select(type=0)
 vtk_heads()
 f=open ("vectors_h_file.txt","w");
@@ -391,11 +414,10 @@ for t in range (1000):
     vtf.writevcf(system, outfile)
     system.part.writevtk("./dummy.vtk");
     write_to_vtk(vtk_idx);vtk_idx+=1
-    system.integrator.run(warm_steps)
+    system.integrator.run(warm_steps) #integrating
     count_steps+=1
     store_all_lists()
 
-   #z gamma=gamma*0.999995
     count+=1
     steps.append(count_steps*warm_steps)
     total_en.append(energy['total']/npart)
@@ -420,8 +442,8 @@ for t in range (1000):
 print("======= ======== =======")
 print("WARMUP DONE!!")
 store_all_lists()
-
-angle_harmonic = interactions.AngleHarmonic(bend=1.0, phi0=2 * np.pi / 3)
+#### Up to here, equilibrating system without bending potential to avoid chain breaking due to dipolar interactions ###
+angle_harmonic = interactions.AngleHarmonic(bend=1.0, phi0=2 * np.pi / 3) ##adding harmonic bending otetnial
 system.bonded_inter.add(angle_harmonic)
 nchains=int(system.part[:].pos[:,0].size/DP)
 monomers=DP
@@ -433,8 +455,7 @@ for j in range (nchains):
 
 
 # restore simulation temperature
-system.thermostat.set_langevin(kT=1.0, gamma=1.0)
-system.integrator.run(warm_steps * 100)
+system.integrator.run(warm_steps * 100) ### integrate for a few steps with angular potential on ###
 print("Finished warmup")
 
 
@@ -443,26 +464,26 @@ print("Finished warmup")
 #############################################################
 #      Integration                                          #
 #############################################################
-log = open("myprog_magnetics_int.log", "w")
+log = open("myprog_magnetics_int.log", "w") # changing log
 sys.stdout = log
 system.integrator.set_vv() 
 key_2="magnetics_equil"
 print("simulating...")
 check_path="mycheck_magnetic"
 checkpoint=checkpointing.Checkpoint(checkpoint_id=check_path,checkpoint_path='.')
-checkpoint.register("system")
-t_steps = 10000 
-frames=1000
+checkpoint.register("system") # storing checkpoints with dipolar interactions.
+t_steps = 10000 # time steps
+frames=1000 #frames to store
 store_step=int(t_steps/frames)
 check_idx=0
 checkpoint.save(checkpoint_index=check_idx)
-warm_steps=10000
+warm_steps=10000 # integration steps for each time step
 
 ## Setup lists for data storage as well as indices
 count,steps,count_steps,total_en,kin_en,dipolar_en,pair_en,bond_en,ken_0,ken_1,listoflists,string_lists=list_setup()
 vtk_heads()
 
-############################################################
+############Store folders for vtk and plots##################
 tostore_vtk="vtk_equil"                                     #
 if os.path.isdir(tostore_vtk):                              #
     pass                                                    #
